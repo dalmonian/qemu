@@ -3466,6 +3466,7 @@ typedef struct BenchData {
     uint64_t image_size;
     bool write;
     int bufsize;
+    int step;
     int nrreq;
     int n;
     uint8_t *buf;
@@ -3502,7 +3503,7 @@ static void bench_cb(void *opaque, int ret)
             exit(EXIT_FAILURE);
         }
         b->in_flight++;
-        b->offset += b->bufsize;
+        b->offset += b->step;
         b->offset %= b->image_size;
     }
 }
@@ -3519,6 +3520,7 @@ static int img_bench(int argc, char **argv)
     int64_t offset = 0;
     size_t bufsize = 4096;
     int pattern = 0;
+    size_t step = 0;
     int64_t image_size;
     BlockBackend *blk = NULL;
     BenchData data = {};
@@ -3534,7 +3536,7 @@ static int img_bench(int argc, char **argv)
             {"pattern", required_argument, 0, OPTION_PATTERN},
             {0, 0, 0, 0}
         };
-        c = getopt_long(argc, argv, "hc:d:f:no:qs:t:w", long_options, NULL);
+        c = getopt_long(argc, argv, "hc:d:f:no:qs:S:t:w", long_options, NULL);
         if (c == -1) {
             break;
         }
@@ -3602,6 +3604,20 @@ static int img_bench(int argc, char **argv)
             bufsize = sval;
             break;
         }
+        case 'S':
+        {
+            int64_t sval;
+            char *end;
+
+            sval = qemu_strtosz_suffix(optarg, &end, QEMU_STRTOSZ_DEFSUFFIX_B);
+            if (sval < 0 || sval > INT_MAX || *end) {
+                error_report("Invalid step size specified");
+                return 1;
+            }
+
+            step = sval;
+            break;
+        }
         case 't':
             ret = bdrv_parse_cache_mode(optarg, &flags, &writethrough);
             if (ret < 0) {
@@ -3652,15 +3668,16 @@ static int img_bench(int argc, char **argv)
         .blk        = blk,
         .image_size = image_size,
         .bufsize    = bufsize,
+        .step       = step ?: bufsize,
         .nrreq      = depth,
         .n          = count,
         .offset     = offset,
         .write      = is_write,
     };
     printf("Sending %d %s requests, %d bytes each, %d in parallel "
-           "(starting at offset %" PRId64 ")\n",
+           "(starting at offset %" PRId64 ", step size %d)\n",
            data.n, data.write ? "write" : "read", data.bufsize, data.nrreq,
-           data.offset);
+           data.offset, data.step);
 
     data.buf = blk_blockalign(blk, data.nrreq * data.bufsize);
     memset(data.buf, pattern, data.nrreq * data.bufsize);
