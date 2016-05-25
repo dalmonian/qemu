@@ -137,6 +137,17 @@ enum {
     IMMUCFGR_HTR = (1 << 11),
 };
 
+/* Arithmetic exception status register */
+enum {
+    AESR_CYADDE = (1 << 0),
+    AESR_OVADDE = (1 << 1),
+    AESR_CYMULE = (1 << 2),
+    AESR_OVMULE = (1 << 3),
+    AESR_DBZE = (1 << 4),
+    AESR_CYMACADDE = (1 << 5),
+    AESR_OVMACADDE = (1 << 6),
+};
+
 /* Float point control status register */
 enum {
     FPCSR_FPEE = 1,
