@@ -40,6 +40,10 @@ void HELPER(mtspr)(CPUOpenRISCState *env,
         env->vr = rb;
         break;
 
+    case TO_SPR(0, 12): /* AECR */
+        env->aecr = rb;
+        break;
+
     case TO_SPR(0, 16): /* NPC */
         env->npc = rb;
         break;
