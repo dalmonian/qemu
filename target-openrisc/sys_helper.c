@@ -200,6 +200,9 @@ target_ulong HELPER(mfspr)(CPUOpenRISCState *env,
     case TO_SPR(0, 4): /* IMMUCFGR */
         return env->immucfgr;
 
+    case TO_SPR(0, 13): /* AESR */
+        return env->aesr;
+
     case TO_SPR(0, 16): /* NPC */
         return env->npc;
 
