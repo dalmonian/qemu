@@ -113,6 +113,7 @@ enum {
     CPUCFGR_OF32S = (1 << 7),
     CPUCFGR_OF64S = (1 << 8),
     CPUCFGR_OV64S = (1 << 9),
+    CPUCFGR_AECSRP = (1 << 14),
 };
 
 /* DMMU configure register */
