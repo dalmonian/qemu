@@ -56,6 +56,7 @@ typedef struct DisasContext {
 static TCGv_env cpu_env;
 static TCGv cpu_sr;
 static TCGv cpu_aecr;
+static TCGv cpu_aesr;
 static TCGv cpu_R[32];
 static TCGv cpu_pc;
 static TCGv jmp_pc;            /* l.jr/l.jalr temp pc */
@@ -83,6 +84,8 @@ void openrisc_translate_init(void)
                                 offsetof(CPUOpenRISCState, sr), "sr");
     cpu_aecr = tcg_global_mem_new(cpu_env,
                                 offsetof(CPUOpenRISCState, aecr), "aecr");
+    cpu_aesr = tcg_global_mem_new(cpu_env,
+                                offsetof(CPUOpenRISCState, aesr), "aesr");
     env_flags = tcg_global_mem_new_i32(cpu_env,
                                        offsetof(CPUOpenRISCState, flags),
                                        "flags");
