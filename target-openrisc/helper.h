@@ -59,6 +59,7 @@ DEF_HELPER_FLAGS_1(fl1, 0, tl, tl)
 DEF_HELPER_FLAGS_3(mul32, 0, i32, env, i32, i32)
 DEF_HELPER_FLAGS_4(adder, 0, i32, env, i32, i32, i32)
 DEF_HELPER_FLAGS_3(sub, 0, i32, env, i32, i32)
+DEF_HELPER_FLAGS_3(mac, 0, i64, env, i64, i64)
 
 /* interrupt */
 DEF_HELPER_FLAGS_1(rfe, 0, void, env)

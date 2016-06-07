@@ -157,3 +157,27 @@ uint32_t HELPER(sub)(CPUOpenRISCState *env,
 
 	return res;
 }
+
+uint64_t HELPER(mac)(CPUOpenRISCState *env,
+                       uint64_t ra, uint64_t rb)
+{
+    uint64_t res;
+    uint32_t aeon; /* Arithmetic exception on */
+
+    OpenRISCCPU *cpu = openrisc_env_get_cpu(env);
+
+    aeon = (env->cpucfgr & CPUCFGR_AECSRP) && (env->sr & SR_OVE);
+
+    res = ra + rb;
+
+    /* Sets overflow flag */
+    if (((~ra & ~rb & res) >> 63 | (ra & rb & ~res) >> 63) != 0) {
+        env->sr |= SR_OV;
+        if (aeon && (env->aecr & AECR_OVMACADDE) == AECR_OVMACADDE) {
+			env->aesr |= AESR_OVMACADDE;
+			raise_exception(cpu, EXCP_RANGE);
+        }
+    }
+
+    return res;
+}
