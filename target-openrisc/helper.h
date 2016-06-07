@@ -57,6 +57,7 @@ FOP_CMP(ge)
 DEF_HELPER_FLAGS_1(ff1, 0, tl, tl)
 DEF_HELPER_FLAGS_1(fl1, 0, tl, tl)
 DEF_HELPER_FLAGS_3(mul32, 0, i32, env, i32, i32)
+DEF_HELPER_FLAGS_4(adder, 0, i32, env, i32, i32, i32)
 
 /* interrupt */
 DEF_HELPER_FLAGS_1(rfe, 0, void, env)

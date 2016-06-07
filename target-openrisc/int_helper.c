@@ -78,3 +78,47 @@ uint32_t HELPER(mul32)(CPUOpenRISCState *env,
 
     return result;
 }
+
+uint32_t HELPER(adder)(CPUOpenRISCState *env,
+                       uint32_t ra, uint32_t rb, uint32_t cin)
+{
+    uint64_t tmp;
+
+    uint32_t res;
+    uint32_t aeon; /* Arithmetic exception on */
+    uint32_t excp;
+
+    OpenRISCCPU *cpu = openrisc_env_get_cpu(env);
+
+    env->sr &= ~(SR_CY | SR_OV); /* Resets SR_CY and SR_OV */
+
+    excp = 0;
+    aeon = (env->cpucfgr & CPUCFGR_AECSRP) && (env->sr & SR_OVE);
+
+    tmp = (uint64_t) ra + rb + cin;
+    res = (uint32_t) tmp;
+
+    /* Sets carry flag */
+    if ((tmp >> 32) != 0) {
+        env->sr |= SR_CY;
+        if (aeon && (env->aecr & AECR_CYADDE) == AECR_CYADDE) {
+            env->aesr |= AESR_CYADDE;
+            excp = 1;
+        }
+    }
+
+    /* Sets overflow flag */
+    if (((~ra & ~rb & res) >> 31 | (ra & rb & ~res) >> 31) != 0) {
+        env->sr |= SR_OV;
+        if (aeon && (env->aecr & AECR_OVADDE) == AECR_OVADDE) {
+            env->aesr |= AESR_OVADDE;
+            excp = 1;
+        }
+    }
+
+    if (excp == 1) {
+        raise_exception(cpu, EXCP_RANGE);
+    }
+
+    return res;
+}
