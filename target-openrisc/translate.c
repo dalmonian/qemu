@@ -385,34 +385,27 @@ static void dec_calc(DisasContext *dc, uint32_t insn)
         case 0x03:    /* l.div */
             LOG_DIS("l.div r%d, r%d, r%d\n", rd, ra, rb);
             {
-                TCGLabel *lab0 = gen_new_label();
-                TCGLabel *lab1 = gen_new_label();
-                TCGLabel *lab2 = gen_new_label();
-                TCGLabel *lab3 = gen_new_label();
+                TCGLabel *lab = gen_new_label();
                 TCGv_i32 sr_ove = tcg_temp_local_new_i32();
-                if (rb == 0) {
-                    tcg_gen_ori_tl(cpu_sr, cpu_sr, (SR_OV | SR_CY));
+                TCGv_i32 aecr_dbze = tcg_temp_local_new_i32();
+                TCGv_i32 excp = tcg_temp_local_new_i32();
+                if (rb == 0 || cpu_R[rb] == 0) {
+                    tcg_gen_ori_tl(cpu_sr, cpu_sr, SR_OV);
                     tcg_gen_andi_tl(sr_ove, cpu_sr, SR_OVE);
-                    tcg_gen_brcondi_tl(TCG_COND_NE, sr_ove, SR_OVE, lab0);
+                    tcg_gen_andi_tl(aecr_dbze, cpu_aecr, AECR_DBZE);
+                    tcg_gen_setcondi_tl(TCG_COND_EQ, sr_ove, sr_ove, 0x0);
+                    tcg_gen_setcondi_tl(TCG_COND_EQ, aecr_dbze, aecr_dbze, 0x0);
+                    tcg_gen_and_tl(excp, sr_ove, aecr_dbze);
+                    tcg_gen_brcondi_tl(TCG_COND_NE, excp, 0x0, lab);
+                    tcg_gen_ori_tl(cpu_aesr, cpu_aesr, AESR_DBZE);
                     gen_exception(dc, EXCP_RANGE);
-                    gen_set_label(lab0);
                 } else {
-                    tcg_gen_brcondi_tl(TCG_COND_EQ, cpu_R[rb],
-                                       0x00000000, lab1);
-                    tcg_gen_brcondi_tl(TCG_COND_NE, cpu_R[ra],
-                                       0x80000000, lab2);
-                    tcg_gen_brcondi_tl(TCG_COND_NE, cpu_R[rb],
-                                       0xffffffff, lab2);
-                    gen_set_label(lab1);
-                    tcg_gen_ori_tl(cpu_sr, cpu_sr, (SR_OV | SR_CY));
-                    tcg_gen_andi_tl(sr_ove, cpu_sr, SR_OVE);
-                    tcg_gen_brcondi_tl(TCG_COND_NE, sr_ove, SR_OVE, lab3);
-                    gen_exception(dc, EXCP_RANGE);
-                    gen_set_label(lab2);
                     tcg_gen_div_tl(cpu_R[rd], cpu_R[ra], cpu_R[rb]);
-                    gen_set_label(lab3);
                 }
+                gen_set_label(lab);
                 tcg_temp_free_i32(sr_ove);
+                tcg_temp_free_i32(aecr_dbze);
+                tcg_temp_free_i32(excp);
             }
             break;
 
@@ -427,28 +420,27 @@ static void dec_calc(DisasContext *dc, uint32_t insn)
         case 0x03:    /* l.divu */
             LOG_DIS("l.divu r%d, r%d, r%d\n", rd, ra, rb);
             {
-                TCGLabel *lab0 = gen_new_label();
-                TCGLabel *lab1 = gen_new_label();
-                TCGLabel *lab2 = gen_new_label();
+                TCGLabel *lab = gen_new_label();
                 TCGv_i32 sr_ove = tcg_temp_local_new_i32();
-                if (rb == 0) {
-                    tcg_gen_ori_tl(cpu_sr, cpu_sr, (SR_OV | SR_CY));
+                TCGv_i32 aecr_dbze = tcg_temp_local_new_i32();
+                TCGv_i32 excp = tcg_temp_local_new_i32();
+                if (rb == 0 || cpu_R[rb] == 0) {
+                    tcg_gen_ori_tl(cpu_sr, cpu_sr, SR_OV);
                     tcg_gen_andi_tl(sr_ove, cpu_sr, SR_OVE);
-                    tcg_gen_brcondi_tl(TCG_COND_NE, sr_ove, SR_OVE, lab0);
+                    tcg_gen_andi_tl(aecr_dbze, cpu_aecr, AECR_DBZE);
+                    tcg_gen_setcondi_tl(TCG_COND_EQ, sr_ove, sr_ove, 0x0);
+                    tcg_gen_setcondi_tl(TCG_COND_EQ, aecr_dbze, aecr_dbze, 0x0);
+                    tcg_gen_and_tl(excp, sr_ove, aecr_dbze);
+                    tcg_gen_brcondi_tl(TCG_COND_NE, excp, 0x0, lab);
+                    tcg_gen_ori_tl(cpu_aesr, cpu_aesr, AESR_DBZE);
                     gen_exception(dc, EXCP_RANGE);
-                    gen_set_label(lab0);
                 } else {
-                    tcg_gen_brcondi_tl(TCG_COND_NE, cpu_R[rb],
-                                       0x00000000, lab1);
-                    tcg_gen_ori_tl(cpu_sr, cpu_sr, (SR_OV | SR_CY));
-                    tcg_gen_andi_tl(sr_ove, cpu_sr, SR_OVE);
-                    tcg_gen_brcondi_tl(TCG_COND_NE, sr_ove, SR_OVE, lab2);
-                    gen_exception(dc, EXCP_RANGE);
-                    gen_set_label(lab1);
                     tcg_gen_divu_tl(cpu_R[rd], cpu_R[ra], cpu_R[rb]);
-                    gen_set_label(lab2);
                 }
+                gen_set_label(lab);
                 tcg_temp_free_i32(sr_ove);
+                tcg_temp_free_i32(aecr_dbze);
+                tcg_temp_free_i32(excp);
             }
             break;
 
