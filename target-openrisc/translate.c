@@ -95,7 +95,7 @@ void openrisc_translate_init(void)
     cpu_env = tcg_global_reg_new_ptr(TCG_AREG0, "env");
     cpu_sr = tcg_global_mem_new(cpu_env,
                                 offsetof(CPUOpenRISCState, sr), "sr");
-    cpu_srf = tcg_global_mem_new(TCG_AREG0,
+    cpu_srf = tcg_global_mem_new(cpu_env,
                                 offsetof(CPUOpenRISCState, srf), "srf");
     env_flags = tcg_global_mem_new_i32(cpu_env,
                                        offsetof(CPUOpenRISCState, flags),
@@ -243,7 +243,6 @@ static void gen_jump(DisasContext *dc, uint32_t imm, uint32_t reg, uint32_t op0)
     case 0x01:     /* l.jal */
         tcg_gen_movi_tl(cpu_R[9], (dc->pc + 8));
         tcg_gen_movi_tl(jmp_pc, tmp_pc);
-<<<<<<< HEAD
         dc->j_state = JUMP_STATIC;
         break;
     case 0x03:     /* l.bnf */
@@ -1086,7 +1085,6 @@ static void dec_misc(DisasContext *dc, uint32_t insn)
         goto do_store;
 
     case 0x37:    /* l.sh */
-        gen_loadstore(dc, op0, ra, rb, rd, tmp);
         LOG_DIS("l.sh %d, r%d, r%d, %d\n", I5, ra, rb, I11);
         mop = MO_TEUW;
         goto do_store;

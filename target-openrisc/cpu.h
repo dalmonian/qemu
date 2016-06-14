@@ -313,6 +313,8 @@ typedef struct CPUOpenRISCTLBContext {
 typedef struct CPUOpenRISCState {
     target_ulong gpr[32];     /* General registers */
     target_ulong pc;          /* Program counter */
+    target_ulong npc;         /* Next PC */
+    target_ulong ppc;         /* Prev PC */
     target_ulong jmp_pc;      /* Jump PC */
 
     target_ulong machi;       /* Multiply register MACHI */
@@ -339,6 +341,8 @@ typedef struct CPUOpenRISCState {
 
     uint32_t flags;           /* cpu_flags, we only use it for exception
                                  in solt so far.  */
+    uint32_t btaken; /* the SR_F bit */
+
     CPU_COMMON
 
     /* Fields from here on are preserved across CPU reset. */
