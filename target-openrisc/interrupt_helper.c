@@ -27,10 +27,6 @@ void HELPER(rfe)(CPUOpenRISCState *env)
 {
     OpenRISCCPU *cpu = openrisc_env_get_cpu(env);
     CPUState *cs = CPU(cpu);
-#ifndef CONFIG_USER_ONLY
-    int need_flush_tlb = (cpu->env.sr & (SR_SM | SR_IME | SR_DME)) ^
-                         (cpu->env.esr & (SR_SM | SR_IME | SR_DME));
-#endif
     cpu->env.pc = cpu->env.epcr;
     cpu->env.npc = cpu->env.epcr;
     cpu->env.sr = cpu->env.esr;
@@ -50,10 +46,6 @@ void HELPER(rfe)(CPUOpenRISCState *env)
     } else {
         cpu->env.tlb->cpu_openrisc_map_address_code =
             &cpu_openrisc_get_phys_nommu;
-    }
-
-    if (need_flush_tlb) {
-        tlb_flush(cs, 1);
     }
 #endif
     cs->interrupt_request |= CPU_INTERRUPT_EXITTB;

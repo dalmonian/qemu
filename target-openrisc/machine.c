@@ -31,13 +31,12 @@ static const VMStateDescription vmstate_env = {
     .fields = (VMStateField[]) {
         VMSTATE_UINT32_ARRAY(gpr, CPUOpenRISCState, 32),
         VMSTATE_UINT32(sr, CPUOpenRISCState),
+        VMSTATE_UINT32(srf, CPUOpenRISCState),
         VMSTATE_UINT32(epcr, CPUOpenRISCState),
         VMSTATE_UINT32(eear, CPUOpenRISCState),
         VMSTATE_UINT32(esr, CPUOpenRISCState),
         VMSTATE_UINT32(fpcsr, CPUOpenRISCState),
         VMSTATE_UINT32(pc, CPUOpenRISCState),
-        VMSTATE_UINT32(npc, CPUOpenRISCState),
-        VMSTATE_UINT32(ppc, CPUOpenRISCState),
         VMSTATE_END_OF_LIST()
     }
 };

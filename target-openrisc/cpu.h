@@ -20,6 +20,7 @@
 #ifndef CPU_OPENRISC_H
 #define CPU_OPENRISC_H
 
+#define TARGET_HAS_ICE 1
 #define TARGET_LONG_BITS 32
 
 #define CPUArchState struct CPUOpenRISCState
@@ -57,6 +58,13 @@ typedef struct OpenRISCCPUClass {
     void (*parent_reset)(CPUState *cpu);
 } OpenRISCCPUClass;
 
+/* The CPU allows separate MMUs for instructions and data
+ * and would lead consequently 7 different MMU modes.
+ * To reduce the cost for tlb flushes both MMUs can only be
+ * used together
+ */
+
+
 #define NB_MMU_MODES    3
 
 enum {
@@ -82,8 +90,9 @@ enum {
 /* Version Register */
 #define SPR_VR 0xFFFF003F
 
-/* Internal flags, delay slot flag */
-#define D_FLAG    1
+/* Internal flags */
+#define D_FLAG    2 /* delay slot flag */
+#define B_FLAG    4 /* branch flag */
 
 /* Interrupt */
 #define NR_IRQS  32
@@ -224,6 +233,7 @@ enum {
     OPENRISC_FEATURE_OF32S = (1 << 7),
     OPENRISC_FEATURE_OF64S = (1 << 8),
     OPENRISC_FEATURE_OV64S = (1 << 9),
+    OPENRISC_FEATURE_NOFLAGS = (1 << 10),
 };
 
 /* Tick Timer Mode Register */
@@ -292,11 +302,17 @@ typedef struct CPUOpenRISCTLBContext {
 } CPUOpenRISCTLBContext;
 #endif
 
+/* Helper for the supervision register */
+#define ENV_GET_SR(env) (((env)->sr&~SR_F) | ((env)->srf ? SR_F : 0))
+
+#define ENV_SET_SR(env, srtemp)   do {\
+                                      (env)->sr = ((srtemp) & ~SR_F) | SR_FO;\
+                                      (env)->srf = (srtemp) & SR_F;\
+                                  } while (0)
+
 typedef struct CPUOpenRISCState {
     target_ulong gpr[32];     /* General registers */
     target_ulong pc;          /* Program counter */
-    target_ulong npc;         /* Next PC */
-    target_ulong ppc;         /* Prev PC */
     target_ulong jmp_pc;      /* Jump PC */
 
     target_ulong machi;       /* Multiply register MACHI */
@@ -308,7 +324,8 @@ typedef struct CPUOpenRISCState {
     target_ulong epcr;        /* Exception PC register */
     target_ulong eear;        /* Exception EA register */
 
-    uint32_t sr;              /* Supervisor register */
+    uint32_t sr;              /* Supervision register */
+    uint32_t srf;             /* separated branch flag of Supervision register*/
     uint32_t vr;              /* Version register */
     uint32_t upr;             /* Unit presence register */
     uint32_t cpucfgr;         /* CPU configure register */
@@ -322,8 +339,6 @@ typedef struct CPUOpenRISCState {
 
     uint32_t flags;           /* cpu_flags, we only use it for exception
                                  in solt so far.  */
-    uint32_t btaken;          /* the SR_F bit */
-
     CPU_COMMON
 
     /* Fields from here on are preserved across CPU reset. */
@@ -421,12 +436,13 @@ static inline void cpu_get_tb_cpu_state(CPUOpenRISCState *env,
     *pc = env->pc;
     *cs_base = 0;
     /* D_FLAG -- branch instruction exception */
-    *flags = (env->flags & D_FLAG);
+    *flags = (env->flags & (D_FLAG | B_FLAG)) |
+             (env->sr & (SR_SM | SR_DME | SR_IME | SR_OVE));
 }
 
 static inline int cpu_mmu_index(CPUOpenRISCState *env, bool ifetch)
 {
-    if (!(env->sr & SR_IME)) {
+    if (!(env->sr & (SR_IME | SR_DME))) {
         return MMU_NOMMU_IDX;
     }
     return (env->sr & SR_SM) == 0 ? MMU_USER_IDX : MMU_SUPERVISOR_IDX;
