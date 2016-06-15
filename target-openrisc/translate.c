@@ -49,6 +49,7 @@ typedef struct DisasContext {
     uint32_t tb_flags, synced_flags, flags;
     uint32_t is_jmp;
     uint32_t mem_idx;
+    uint32_t sr;
     int singlestep_enabled;
     uint32_t delayed_branch;
 } DisasContext;
@@ -1646,6 +1647,7 @@ void gen_intermediate_code(CPUOpenRISCState *env, struct TranslationBlock *tb)
     dc->ppc = pc_start;
     dc->pc = pc_start;
     dc->flags = cpu->env.cpucfgr;
+    dc->sr = cpu->env.sr;
     dc->mem_idx = cpu_mmu_index(&cpu->env, false);
     dc->synced_flags = dc->tb_flags = tb->flags;
     dc->delayed_branch = !!(dc->tb_flags & D_FLAG);
