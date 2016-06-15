@@ -967,37 +967,42 @@ static void dec_misc(DisasContext *dc, uint32_t insn)
     case 0x28:    /* l.addic */
         LOG_DIS("l.addic r%d, r%d, %d\n", rd, ra, I16);
         {
-            TCGLabel *lab = gen_new_label();
-            TCGv_i64 ta = tcg_temp_new_i64();
-            TCGv_i64 td = tcg_temp_local_new_i64();
-            TCGv_i64 tcy = tcg_temp_local_new_i64();
-            TCGv_i32 res = tcg_temp_local_new_i32();
-            TCGv_i32 sr_cy = tcg_temp_local_new_i32();
-            TCGv_i32 sr_ove = tcg_temp_local_new_i32();
-            tcg_gen_extu_i32_i64(ta, cpu_R[ra]);
-            tcg_gen_andi_i32(sr_cy, cpu_sr, SR_CY);
-            tcg_gen_shri_i32(sr_cy, sr_cy, 10);
-            tcg_gen_extu_i32_i64(tcy, sr_cy);
-            tcg_gen_addi_i64(td, ta, sign_extend(I16, 16));
-            tcg_gen_add_i64(td, td, tcy);
-            tcg_gen_extrl_i64_i32(res, td);
-            tcg_gen_shri_i64(td, td, 32);
-            tcg_gen_andi_i64(td, td, 0x3);
-            /* Jump to lab when no overflow.  */
-            tcg_gen_brcondi_i64(TCG_COND_EQ, td, 0x0, lab);
-            tcg_gen_brcondi_i64(TCG_COND_EQ, td, 0x3, lab);
-            tcg_gen_ori_i32(cpu_sr, cpu_sr, (SR_OV | SR_CY));
-            tcg_gen_andi_i32(sr_ove, cpu_sr, SR_OVE);
-            tcg_gen_brcondi_i32(TCG_COND_NE, sr_ove, SR_OVE, lab);
-            gen_exception(dc, EXCP_RANGE);
-            gen_set_label(lab);
-            tcg_gen_mov_i32(cpu_R[rd], res);
-            tcg_temp_free_i64(ta);
-            tcg_temp_free_i64(td);
-            tcg_temp_free_i64(tcy);
-            tcg_temp_free_i32(res);
-            tcg_temp_free_i32(sr_cy);
-            tcg_temp_free_i32(sr_ove);
+            if (!aeon) {
+                tcg_gen_addi_tl(cpu_R[rd], cpu_R[ra], sign_extend(I16, 16));
+                tcg_gen_addi_tl(cpu_R[rd], cpu_R[rd], (dc->sr & SR_CY) != 0);
+            } else {
+                TCGLabel *lab = gen_new_label();
+                TCGv_i64 ta = tcg_temp_new_i64();
+                TCGv_i64 td = tcg_temp_local_new_i64();
+                TCGv_i64 tcy = tcg_temp_local_new_i64();
+                TCGv_i32 res = tcg_temp_local_new_i32();
+                TCGv_i32 sr_cy = tcg_temp_local_new_i32();
+                TCGv_i32 sr_ove = tcg_temp_local_new_i32();
+                tcg_gen_extu_i32_i64(ta, cpu_R[ra]);
+                tcg_gen_andi_i32(sr_cy, cpu_sr, SR_CY);
+                tcg_gen_shri_i32(sr_cy, sr_cy, 10);
+                tcg_gen_extu_i32_i64(tcy, sr_cy);
+                tcg_gen_addi_i64(td, ta, sign_extend(I16, 16));
+                tcg_gen_add_i64(td, td, tcy);
+                tcg_gen_extrl_i64_i32(res, td);
+                tcg_gen_shri_i64(td, td, 32);
+                tcg_gen_andi_i64(td, td, 0x3);
+                /* Jump to lab when no overflow.  */
+                tcg_gen_brcondi_i64(TCG_COND_EQ, td, 0x0, lab);
+                tcg_gen_brcondi_i64(TCG_COND_EQ, td, 0x3, lab);
+                tcg_gen_ori_i32(cpu_sr, cpu_sr, (SR_OV | SR_CY));
+                tcg_gen_andi_i32(sr_ove, cpu_sr, SR_OVE);
+                tcg_gen_brcondi_i32(TCG_COND_NE, sr_ove, SR_OVE, lab);
+                gen_exception(dc, EXCP_RANGE);
+                gen_set_label(lab);
+                tcg_gen_mov_i32(cpu_R[rd], res);
+                tcg_temp_free_i64(ta);
+                tcg_temp_free_i64(td);
+                tcg_temp_free_i64(tcy);
+                tcg_temp_free_i32(res);
+                tcg_temp_free_i32(sr_cy);
+                tcg_temp_free_i32(sr_ove);
+            }
         }
         break;
 
