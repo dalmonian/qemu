@@ -269,6 +269,7 @@ static void dec_calc(DisasContext *dc, uint32_t insn)
 {
     uint32_t op0, op1, op2;
     uint32_t ra, rb, rd;
+    uint32_t aeon; /* Arithmetic exception on */
     op0 = extract32(insn, 0, 4);
     op1 = extract32(insn, 8, 2);
     op2 = extract32(insn, 6, 2);
@@ -276,6 +277,7 @@ static void dec_calc(DisasContext *dc, uint32_t insn)
     rb = extract32(insn, 11, 5);
     rd = extract32(insn, 21, 5);
 
+    aeon = (dc->flags & CPUCFGR_AECSRP) && (dc->sr & SR_OVE);
     switch (op0) {
     case 0x0000:
         switch (op1) {
@@ -716,6 +718,7 @@ static void dec_misc(DisasContext *dc, uint32_t insn)
 {
     uint32_t op0, op1;
     uint32_t ra, rb, rd;
+    uint32_t aeon;
 #ifdef OPENRISC_DISAS
     uint32_t L6, K5;
 #endif
@@ -736,6 +739,8 @@ static void dec_misc(DisasContext *dc, uint32_t insn)
     I11 = extract32(insn, 0, 11);
     N26 = extract32(insn, 0, 26);
     tmp = (I5<<11) + I11;
+
+    aeon = (dc->flags & CPUCFGR_AECSRP) && (dc->sr & SR_OVE);
 
     switch (op0) {
     case 0x00:    /* l.j */
