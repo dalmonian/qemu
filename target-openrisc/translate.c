@@ -613,17 +613,11 @@ static void dec_calc(DisasContext *dc, uint32_t insn)
         case 0x00:    /* l.cmov */
             LOG_DIS("l.cmov r%d, r%d, r%d\n", rd, ra, rb);
             {
-                TCGLabel *lab = gen_new_label();
-                TCGv res = tcg_temp_local_new();
-                TCGv sr_f = tcg_temp_new();
-                tcg_gen_andi_tl(sr_f, cpu_sr, SR_F);
-                tcg_gen_mov_tl(res, cpu_R[rb]);
-                tcg_gen_brcondi_tl(TCG_COND_NE, sr_f, SR_F, lab);
-                tcg_gen_mov_tl(res, cpu_R[ra]);
-                gen_set_label(lab);
-                tcg_gen_mov_tl(cpu_R[rd], res);
-                tcg_temp_free(sr_f);
-                tcg_temp_free(res);
+                if (dc->sr & SR_F) {
+                    tcg_gen_mov_tl(cpu_R[rd], cpu_R[ra]);
+                } else {
+                    tcg_gen_mov_tl(cpu_R[rd], cpu_R[rb]);
+                }
             }
             break;
 
