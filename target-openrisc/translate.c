@@ -934,6 +934,8 @@ static void dec_misc(DisasContext *dc, uint32_t insn)
         {
             if (I16 == 0) {
                 tcg_gen_mov_tl(cpu_R[rd], cpu_R[ra]);
+            } else if (!aeon) {
+                tcg_gen_addi_tl(cpu_R[rd], cpu_R[ra], sign_extend(I16, 16));
             } else {
                 TCGLabel *lab = gen_new_label();
                 TCGv_i64 ta = tcg_temp_new_i64();
