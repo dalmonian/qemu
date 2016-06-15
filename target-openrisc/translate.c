@@ -529,8 +529,15 @@ static void dec_calc(DisasContext *dc, uint32_t insn)
                 TCGLabel *lab0 = gen_new_label();
                 TCGLabel *lab1 = gen_new_label();
                 TCGLabel *lab2 = gen_new_label();
+                TCGLabel *lab3 = gen_new_label();
                 TCGv_i32 sr_ove = tcg_temp_local_new_i32();
-                if (rb == 0) {
+                if (!aeon && (rb != 0)) {
+                    tcg_gen_brcondi_tl(TCG_COND_NE, cpu_R[rb],
+                                       0x00000000, lab3);
+                    gen_exception(dc, EXCP_RANGE);
+                    gen_set_label(lab3);
+                    tcg_gen_divu_tl(cpu_R[rd], cpu_R[ra], cpu_R[rb]);
+                } else if (rb == 0) {
                     tcg_gen_ori_tl(cpu_sr, cpu_sr, (SR_OV | SR_CY));
                     tcg_gen_andi_tl(sr_ove, cpu_sr, SR_OVE);
                     tcg_gen_brcondi_tl(TCG_COND_NE, sr_ove, SR_OVE, lab0);
