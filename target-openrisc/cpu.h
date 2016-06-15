@@ -146,6 +146,7 @@ enum {
     AECR_DBZE = (1 << 4),
     AECR_CYMACADDE = (1 << 5),
     AECR_OVMACADDE = (1 << 6),
+};
 
 /* Arithmetic exception status register */
 enum {
