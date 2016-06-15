@@ -458,7 +458,9 @@ static void dec_calc(DisasContext *dc, uint32_t insn)
         switch (op1) {
         case 0x03:    /* l.mul */
             LOG_DIS("l.mul r%d, r%d, r%d\n", rd, ra, rb);
-            if (ra != 0 && rb != 0) {
+            if (!aeon) {
+                tcg_gen_mul_tl(cpu_R[rd], cpu_R[ra], cpu_R[rb]);
+            } else if (ra != 0 && rb != 0) {
                 gen_helper_mul32(cpu_R[rd], cpu_env, cpu_R[ra], cpu_R[rb]);
             } else {
                 tcg_gen_movi_tl(cpu_R[rd], 0x0);
