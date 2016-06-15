@@ -568,7 +568,11 @@ static void dec_calc(DisasContext *dc, uint32_t insn)
         switch (op1) {
         case 0x03:    /* l.mulu */
             LOG_DIS("l.mulu r%d, r%d, r%d\n", rd, ra, rb);
-            if (rb != 0 && ra != 0) {
+            if (!aeon && rb != 0 && ra != 0) {
+                    TCGv_i32 h = tcg_temp_new_i32();
+                    tcg_gen_mulu2_tl(cpu_R[rd], h, cpu_R[ra], cpu_R[rb]);
+                    tcg_temp_free_i32(h);
+            } else if (rb != 0 && ra != 0) {
                 TCGv_i64 result = tcg_temp_local_new_i64();
                 TCGv_i64 tra = tcg_temp_local_new_i64();
                 TCGv_i64 trb = tcg_temp_local_new_i64();
