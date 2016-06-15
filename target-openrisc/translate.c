@@ -1024,9 +1024,13 @@ static void dec_misc(DisasContext *dc, uint32_t insn)
     case 0x2c:    /* l.muli */
         LOG_DIS("l.muli r%d, r%d, %d\n", rd, ra, I16);
         if (ra != 0 && I16 != 0) {
-            TCGv_i32 im = tcg_const_i32(I16);
-            gen_helper_mul32(cpu_R[rd], cpu_env, cpu_R[ra], im);
-            tcg_temp_free_i32(im);
+            if (!aeon) {
+                tcg_gen_muli_tl(cpu_R[rd], cpu_R[ra], sign_extend(I16, 16));
+            } else {
+                TCGv_i32 im = tcg_const_i32(I16);
+                gen_helper_mul32(cpu_R[rd], cpu_env, cpu_R[ra], im);
+                tcg_temp_free_i32(im);
+            }
         } else {
             tcg_gen_movi_tl(cpu_R[rd], 0x0);
         }
