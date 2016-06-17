@@ -150,3 +150,35 @@ uint32_t HELPER(sub)(CPUOpenRISCState *env,
 
 	return res;
 }
+
+uint32_t HELPER(mac)(CPUOpenRISCState *env,
+                       uint32_t ra, uint32_t rb, uint64_t rc)
+{
+	uint64_t res;
+
+    uint32_t excp;
+
+    OpenRISCCPU *cpu = openrisc_env_get_cpu(env);
+
+    env->sr &= ~(SR_CY | SR_OV); /* Resets SR_CY and SR_OV */
+
+    excp = 0;
+
+    res = (uint64_t) ra * (uint64_t) rb;
+    res += rc
+
+    /* Sets overflow flag */
+    if (((~ra & ~rb & res) >> 31 | (ra & rb & ~res) >> 31) != 0) {
+        env->sr |= SR_OV;
+        if (aeon && (env->aecr & AECR_OVADDE) == AECR_OVADDE) {
+            env->aesr |= AESR_OVADDE;
+            excp = 1;
+        }
+    }
+
+    if (excp == 1) {
+        raise_exception(cpu, EXCP_RANGE);
+    }
+
+	return res;
+}
