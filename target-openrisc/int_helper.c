@@ -150,6 +150,7 @@ uint32_t HELPER(sub)(CPUOpenRISCState *env,
 
 	return res;
 }
+<<<<<<< HEAD
 
 uint32_t HELPER(mac)(CPUOpenRISCState *env,
                        uint32_t ra, uint32_t rb, uint64_t rc)
@@ -214,3 +215,5 @@ uint32_t HELPER(msb)(CPUOpenRISCState *env,
 
 	return res;
 }
+=======
+>>>>>>> f0d5134f7b2d0a3c271401679919483afcdffdb9
