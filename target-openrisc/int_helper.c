@@ -105,3 +105,48 @@ uint32_t HELPER(adder)(CPUOpenRISCState *env,
 
     return res;
 }
+
+uint32_t HELPER(sub)(CPUOpenRISCState *env,
+                       uint32_t ra, uint32_t rb)
+{
+    uint64_t tmp;
+
+    uint32_t res;
+    uint32_t max; /* MAX(ra, rb) */
+    uint32_t excp;
+
+    OpenRISCCPU *cpu = openrisc_env_get_cpu(env);
+
+    env->sr &= ~(SR_CY | SR_OV); /* Resets SR_CY and SR_OV */
+
+    excp = 0;
+
+	tmp = (uint64_t) ra - rb;
+	res = (uint32_t) tmp;
+
+	max = (ra > rb)? ra: rb;
+
+    /* Sets carry flag */
+    if ((tmp >> 32) != 0) {
+        env->sr |= SR_CY;
+        if ((env->aecr & AECR_CYADDE) == AECR_CYADDE) {
+            env->aesr |= AESR_CYADDE;
+            excp = 1;
+        }
+    }
+
+	/* Set overflow flag */
+	if ((max ^ res) >> 31 != 0) {
+		env->sr |= SR_OV;
+        if (aeon && (env->aecr & AECR_OVADDE) == AECR_OVADDE) {
+            env->aesr |= AESR_OVADDE;
+            excp = 1;
+        }
+	}
+
+    if (excp == 1) {
+        raise_exception(cpu, EXCP_RANGE);
+    }
+
+	return res;
+}
