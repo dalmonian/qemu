@@ -18,7 +18,6 @@
  */
 #include "qemu/osdep.h"
 #include <machine/trap.h>
-#include <sys/mman.h>
 
 #include "qemu.h"
 #include "qemu/path.h"
@@ -753,9 +752,6 @@ int main(int argc, char **argv)
     }
 
     cpu_model = NULL;
-#if defined(cpudef_setup)
-    cpudef_setup(); /* parse cpu definitions in target config file (TBD) */
-#endif
 
     optind = 1;
     for(;;) {
