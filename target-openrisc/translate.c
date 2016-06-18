@@ -309,8 +309,10 @@ static void dec_calc(DisasContext *dc, uint32_t insn)
                     tcg_gen_add_tl(cpu_R[rd],cpu_R[ra],cpu_R[rb]);
                     tcg_gen_addi_tl(cpu_R[rd],cpu_R[rd],(dc->sr & SR_CY) != 0);
                 } else {
+                    TCGv ttmp = tcg_const_tl((dc->sr & SR_CY) != 0);
                     gen_helper_adder(cpu_R[rd], cpu_env, cpu_R[ra], cpu_R[rb],
-                        (dc->sr & SR_CY) != 0);
+                        ttmp);
+                    tcg_temp_free_i32(ttmp);
                 }
             }
             break;
@@ -753,12 +755,14 @@ static void dec_misc(DisasContext *dc, uint32_t insn)
                 tcg_temp_free_i64(t2);
             } else {
                 TCGv_i64 t3 = tcg_temp_new_i64();
+                TCGv ttmp = tcg_const_tl(sign_extend(I16, 16));
                 tcg_gen_concat_i32_i64(t3, maclo, machi);
-                gen_helper_mac(t3, cpu_env, cpu_R[ra], sign_extend(I16), t3);
+                gen_helper_mac(t3, cpu_env, cpu_R[ra], ttmp, t3);
                 tcg_gen_extrl_i64_i32(maclo, t3);
                 tcg_gen_shri_i64(t3, t3, 32);
                 tcg_gen_extrl_i64_i32(machi, t3);
                 tcg_temp_free_i64(t3);
+                tcg_temp_free_i32(ttmp);
             }
         }
         break;
@@ -867,8 +871,9 @@ static void dec_misc(DisasContext *dc, uint32_t insn)
             } else if (!aeon) {
                 tcg_gen_addi_tl(cpu_R[rd], cpu_R[ra], sign_extend(I16, 16));
             } else {
-                gen_helper_adder(cpu_R[rd], cpu_env, cpu_R[ra],
-                    sign_extend(I16, 16), NO_CIN);
+                TCGv ttmp = tcg_const_tl(sign_extend(I16, 16));
+                gen_helper_adder(cpu_R[rd], cpu_env, cpu_R[ra], ttmp, NO_CIN);
+                tcg_temp_free_i32(ttmp);
             }
         }
         break;
@@ -880,8 +885,11 @@ static void dec_misc(DisasContext *dc, uint32_t insn)
                 tcg_gen_addi_tl(cpu_R[rd], cpu_R[ra], sign_extend(I16, 16));
                 tcg_gen_addi_tl(cpu_R[rd], cpu_R[rd], (dc->sr & SR_CY) != 0);
             } else {
-                gen_helper_adder(cpu_R[rd], cpu_env, cpu_R[ra],
-                    sign_extend(I16, 16), (dc->sr & SR_CY) != 0);
+                TCGv tcy = tcg_const_tl((dc->sr & SR_CY) != 0);
+                TCGv timm = tcg_const_tl(sign_extend(I16, 16));
+                gen_helper_adder(cpu_R[rd], cpu_env, cpu_R[ra], timm, tcy);
+                tcg_temp_free_i32(tcy);
+                tcg_temp_free_i32(timm);
             }
         }
         break;
@@ -993,9 +1001,11 @@ static void dec_mac(DisasContext *dc, uint32_t insn)
 {
     uint32_t op0;
     uint32_t ra, rb;
+    uint32_t aeon; /* Arithmetic exception on */
     op0 = extract32(insn, 0, 4);
     ra = extract32(insn, 16, 5);
     rb = extract32(insn, 11, 5);
+    aeon = (dc->flags & CPUCFGR_AECSRP) && (dc->sr & SR_OVE);
 
     switch (op0) {
     case 0x0001:    /* l.mac */
