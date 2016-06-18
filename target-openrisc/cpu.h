@@ -153,6 +153,17 @@ enum {
     AECR_OVMACADDE = (1 << 6),
 };
 
+/* Arithmetic exception status register */
+enum {
+    AESR_CYADDE = (1 << 0),
+    AESR_OVADDE = (1 << 1),
+    AESR_CYMULE = (1 << 2),
+    AESR_OVMULE = (1 << 3),
+    AESR_DBZE = (1 << 4),
+    AESR_CYMACADDE = (1 << 5),
+    AESR_OVMACADDE = (1 << 6),
+};
+
 /* Float point control status register */
 enum {
     FPCSR_FPEE = 1,
@@ -308,7 +319,11 @@ typedef struct CPUOpenRISCState {
     uint32_t cpucfgr;         /* CPU configure register */
     uint32_t dmmucfgr;        /* DMMU configure register */
     uint32_t immucfgr;        /* IMMU configure register */
+<<<<<<< HEAD
     uint32_t aecr;            /* Arithmetic exception control register */
+=======
+    uint32_t aesr;            /* Arithmetic exception status register */
+>>>>>>> aesr
     uint32_t esr;             /* Exception supervisor register */
     uint32_t fpcsr;           /* Float register */
     float_status fp_status;

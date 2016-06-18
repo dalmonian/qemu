@@ -44,6 +44,10 @@ void HELPER(mtspr)(CPUOpenRISCState *env,
         env->aecr = rb;
         break;
 
+    case TO_SPR(0, 13): /* AESR */
+        env->aesr = rb;
+        break;
+
     case TO_SPR(0, 16): /* NPC */
         env->npc = rb;
         break;
@@ -202,6 +206,9 @@ target_ulong HELPER(mfspr)(CPUOpenRISCState *env,
 
     case TO_SPR(0, 12): /* AECR */
         return env->aecr;
+
+    case TO_SPR(0, 13): /* AESR */
+        return env->aesr;
 
     case TO_SPR(0, 16): /* NPC */
         return env->npc;
