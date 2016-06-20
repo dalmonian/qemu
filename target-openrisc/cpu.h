@@ -319,11 +319,8 @@ typedef struct CPUOpenRISCState {
     uint32_t cpucfgr;         /* CPU configure register */
     uint32_t dmmucfgr;        /* DMMU configure register */
     uint32_t immucfgr;        /* IMMU configure register */
-<<<<<<< HEAD
     uint32_t aecr;            /* Arithmetic exception control register */
-=======
     uint32_t aesr;            /* Arithmetic exception status register */
->>>>>>> aesr
     uint32_t esr;             /* Exception supervisor register */
     uint32_t fpcsr;           /* Float register */
     float_status fp_status;

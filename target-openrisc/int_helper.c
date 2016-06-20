@@ -84,7 +84,7 @@ uint32_t HELPER(adder)(CPUOpenRISCState *env,
     /* Sets carry flag */
     if ((tmp >> 32) != 0) {
         env->sr |= SR_CY;
-        if (aeon && (env->aecr & AECR_CYADDE) == AECR_CYADDE) {
+        if ((env->aecr & AECR_CYADDE) == AECR_CYADDE) {
             env->aesr |= AESR_CYADDE;
             excp = 1;
         }
@@ -93,7 +93,7 @@ uint32_t HELPER(adder)(CPUOpenRISCState *env,
     /* Sets overflow flag */
     if (((~ra & ~rb & res) >> 31 | (ra & rb & ~res) >> 31) != 0) {
         env->sr |= SR_OV;
-        if (aeon && (env->aecr & AECR_OVADDE) == AECR_OVADDE) {
+        if ((env->aecr & AECR_OVADDE) == AECR_OVADDE) {
             env->aesr |= AESR_OVADDE;
             excp = 1;
         }
@@ -121,10 +121,10 @@ uint32_t HELPER(sub)(CPUOpenRISCState *env,
 
     excp = 0;
 
-	tmp = (uint64_t) ra - rb;
-	res = (uint32_t) tmp;
+    tmp = (uint64_t) ra - rb;
+    res = (uint32_t) tmp;
 
-	max = (ra > rb)? ra: rb;
+    max = (ra > rb)? ra: rb;
 
     /* Sets carry flag */
     if ((tmp >> 32) != 0) {
@@ -138,7 +138,7 @@ uint32_t HELPER(sub)(CPUOpenRISCState *env,
 	/* Set overflow flag */
 	if ((max ^ res) >> 31 != 0) {
 		env->sr |= SR_OV;
-        if (aeon && (env->aecr & AECR_OVADDE) == AECR_OVADDE) {
+        if ((env->aecr & AECR_OVADDE) == AECR_OVADDE) {
             env->aesr |= AESR_OVADDE;
             excp = 1;
         }
@@ -151,7 +151,7 @@ uint32_t HELPER(sub)(CPUOpenRISCState *env,
 	return res;
 }
 
-uint32_t HELPER(mac)(CPUOpenRISCState *env,
+uint64_t HELPER(mac)(CPUOpenRISCState *env,
                        uint32_t ra, uint32_t rb, uint64_t rc)
 {
 	uint64_t res;
@@ -165,12 +165,12 @@ uint32_t HELPER(mac)(CPUOpenRISCState *env,
     excp = 0;
 
     res = (uint64_t) ra * (uint64_t) rb;
-    res += rc
+    res += rc;
 
     /* Sets overflow flag */
     if (((~ra & ~rb & res) >> 31 | (ra & rb & ~res) >> 31) != 0) {
         env->sr |= SR_OV;
-        if (aeon && (env->aecr & AECR_OVMACADDE) == AECR_OVMACADDE) {
+        if ((env->aecr & AECR_OVMACADDE) == AECR_OVMACADDE) {
             env->aesr |= AESR_OVMACADDE;
             excp = 1;
         }
@@ -183,12 +183,13 @@ uint32_t HELPER(mac)(CPUOpenRISCState *env,
 	return res;
 }
 
-uint32_t HELPER(msb)(CPUOpenRISCState *env,
+uint64_t HELPER(msb)(CPUOpenRISCState *env,
                        uint32_t ra, uint32_t rb, uint64_t rc)
 {
 	uint64_t res;
 
     uint32_t excp;
+    uint32_t max; /* MAX(ra, rb) */
 
     OpenRISCCPU *cpu = openrisc_env_get_cpu(env);
 
@@ -196,13 +197,15 @@ uint32_t HELPER(msb)(CPUOpenRISCState *env,
 
     excp = 0;
 
+    max = (ra > rb)? ra: rb;
+
     res = (uint64_t) ra * (uint64_t) rb;
     res = rc - res;
 
 	/* Set overflow flag */
 	if ((max ^ res) >> 31 != 0) {
 		env->sr |= SR_OV;
-        if (aeon && (env->aecr & AECR_OVADDE) == AECR_OVADDE) {
+        if ((env->aecr & AECR_OVADDE) == AECR_OVADDE) {
             env->aesr |= AESR_OVADDE;
             excp = 1;
         }
