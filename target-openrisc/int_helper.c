@@ -249,3 +249,35 @@ uint64_t HELPER(macu)(CPUOpenRISCState *env,
 
 	return (uint64_t) res;
 }
+
+uint64_t HELPER(msbu)(CPUOpenRISCState *env,
+                       uint32_t ra, uint32_t rb, uint64_t rc)
+{
+	uint64_t res;
+
+    uint32_t excp;
+
+    OpenRISCCPU *cpu = openrisc_env_get_cpu(env);
+
+    env->sr &= ~(SR_CY | SR_OV); /* Resets SR_CY and SR_OV */
+
+    excp = 0;
+
+    res = (uint64_t) ra * (uint64_t) rb;
+    res = (uint64_t) rc - res;
+
+    /* Sets carry out flag */
+    if ((res >> 32) != 0) {
+        env->sr |= SR_CY;
+        if ((env->aecr & AECR_CYMACADDE) == AECR_CYMACADDE) {
+            env->aesr |= AESR_CYMACADDE;
+            excp = 1;
+        }
+    }
+
+    if (excp == 1) {
+        raise_exception(cpu, EXCP_RANGE);
+    }
+
+	return (uint64_t) res;
+}

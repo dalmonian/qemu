@@ -62,6 +62,7 @@ DEF_HELPER_FLAGS_3(sub, 0, i32, env, i32, i32)
 DEF_HELPER_FLAGS_4(mac, 0, i64, env, i32, i32, i64)
 DEF_HELPER_FLAGS_4(msb, 0, i64, env, i32, i32, i64)
 DEF_HELPER_FLAGS_4(macu, 0, i64, env, i32, i32, i64)
+DEF_HELPER_FLAGS_4(msbu, 0, i64, env, i32, i32, i64)
 
 /* interrupt */
 DEF_HELPER_FLAGS_1(rfe, 0, void, env)

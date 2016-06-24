@@ -1116,6 +1116,37 @@ static void dec_mac(DisasContext *dc, uint32_t insn)
         }
         break;
 
+    case 0x0004:    /* l.msbu */
+        LOG_DIS("l.msbu r%d, r%d\n", ra, rb);
+        {
+            if (!aeon) {
+                TCGv_i32 t0 = tcg_temp_new_i32();
+                TCGv_i32 h = tcg_temp_new_i32();
+                TCGv_i64 t1 = tcg_temp_new_i64();
+                TCGv_i64 t2 = tcg_temp_new_i64();
+                tcg_gen_mulu2_tl(t0, h, cpu_R[ra], cpu_R[rb]);
+                tcg_gen_ext_i32_i64(t1, t0);
+                tcg_gen_concat_i32_i64(t2, maclo, machi);
+                tcg_gen_sub_i64(t2, t2, t1);
+                tcg_gen_extrl_i64_i32(maclo, t2);
+                tcg_gen_shri_i64(t2, t2, 32);
+                tcg_gen_extrl_i64_i32(machi, t2);
+                tcg_temp_free_i32(t0);
+                tcg_temp_free_i32(h);
+                tcg_temp_free_i64(t1);
+                tcg_temp_free_i64(t2);
+            } else {
+                TCGv_i64 t3 = tcg_temp_new_i64();
+                tcg_gen_concat_i32_i64(t3, maclo, machi);
+                gen_helper_msbu(t3, cpu_env, cpu_R[ra], cpu_R[rb], t3);
+                tcg_gen_extrl_i64_i32(maclo, t3);
+                tcg_gen_shri_i64(t3, t3, 32);
+                tcg_gen_extrl_i64_i32(machi, t3);
+                tcg_temp_free_i64(t3);
+            }
+        }
+        break;
+
     default:
         gen_illegal_exception(dc);
         break;
