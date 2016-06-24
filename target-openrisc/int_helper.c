@@ -154,7 +154,7 @@ uint32_t HELPER(sub)(CPUOpenRISCState *env,
 uint64_t HELPER(mac)(CPUOpenRISCState *env,
                        uint32_t ra, uint32_t rb, uint64_t rc)
 {
-	uint64_t res;
+	int64_t res;
 
     uint32_t excp;
 
@@ -164,8 +164,8 @@ uint64_t HELPER(mac)(CPUOpenRISCState *env,
 
     excp = 0;
 
-    res = (uint64_t) ra * (uint64_t) rb;
-    res += rc;
+    res = (int64_t) ra * (int64_t) rb;
+    res += (int64_t) rc;
 
     /* Sets overflow flag */
     if (((~ra & ~rb & res) >> 31 | (ra & rb & ~res) >> 31) != 0) {
@@ -180,7 +180,7 @@ uint64_t HELPER(mac)(CPUOpenRISCState *env,
         raise_exception(cpu, EXCP_RANGE);
     }
 
-	return res;
+	return (uint64_t) res;
 }
 
 uint64_t HELPER(msb)(CPUOpenRISCState *env,
