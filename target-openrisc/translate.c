@@ -394,6 +394,19 @@ static void dec_calc(DisasContext *dc, uint32_t insn)
         }
         break;
 
+    case 0x0007:
+        switch (op1) {
+        case 0x03:    /* l.muld */
+            LOG_DIS("l.muld r%d, r%d\n", ra, rb);
+            tcg_gen_muls2_tl(maclo, machi, cpu_R[ra], cpu_R[rb]);
+            /* TODO: For the 64 bit implementation, use exception handling */
+            break;
+        default:
+            gen_illegal_exception(dc);
+            break;
+        }
+        break;
+
     case 0x0009:
         switch (op1) {
         case 0x03:    /* l.div */
