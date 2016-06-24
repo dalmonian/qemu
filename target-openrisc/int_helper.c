@@ -186,7 +186,7 @@ uint64_t HELPER(mac)(CPUOpenRISCState *env,
 uint64_t HELPER(msb)(CPUOpenRISCState *env,
                        uint32_t ra, uint32_t rb, uint64_t rc)
 {
-	uint64_t res;
+    int64_t res;
 
     uint32_t excp;
     uint32_t max; /* MAX(ra, rb) */
@@ -199,14 +199,14 @@ uint64_t HELPER(msb)(CPUOpenRISCState *env,
 
     max = (ra > rb)? ra: rb;
 
-    res = (uint64_t) ra * (uint64_t) rb;
-    res = rc - res;
+    res = (int64_t) ra * (int64_t) rb;
+    res = (int64_t) rc - res;
 
 	/* Set overflow flag */
 	if ((max ^ res) >> 31 != 0) {
 		env->sr |= SR_OV;
-        if ((env->aecr & AECR_OVADDE) == AECR_OVADDE) {
-            env->aesr |= AESR_OVADDE;
+        if ((env->aecr & AECR_OVMACADDE) == AECR_OVMACADDE) {
+            env->aesr |= AESR_OVMACADDE;
             excp = 1;
         }
 	}
@@ -215,7 +215,7 @@ uint64_t HELPER(msb)(CPUOpenRISCState *env,
         raise_exception(cpu, EXCP_RANGE);
     }
 
-	return res;
+	return (uint64_t) res;
 }
 
 uint64_t HELPER(macu)(CPUOpenRISCState *env,
