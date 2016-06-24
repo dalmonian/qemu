@@ -217,5 +217,3 @@ uint64_t HELPER(msb)(CPUOpenRISCState *env,
 
 	return res;
 }
-=======
->>>>>>> f0d5134f7b2d0a3c271401679919483afcdffdb9
