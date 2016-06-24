@@ -639,6 +639,12 @@ static void dec_calc(DisasContext *dc, uint32_t insn)
             }
             break;
 
+        case 0x03:    /* l.muldu */
+            LOG_DIS("l.muldu r%d, r%d\n", ra, rb);
+            tcg_gen_mulu2_tl(maclo, machi, cpu_R[ra], cpu_R[rb]);
+            /* TODO: For the 64 bit implementation, use exception handling */
+            break;
+
         default:
             gen_illegal_exception(dc);
             break;
