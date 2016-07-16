@@ -706,6 +706,11 @@ static void gen_loadstore(DisasContext *dc, uint32_t op0,
     }
 
     switch (op0) {
+    case 0x1b:    /* l.lwa */
+        tcg_gen_mov_i32(env_raddr, t0);
+        tcg_gen_qemu_ld32u(cpu_R[rd], t0, dc->mem_idx);
+        break;
+
     case 0x21:    /* l.lwz */
         tcg_gen_qemu_ld32u(cpu_R[rd], t0, dc->mem_idx);
         break;
