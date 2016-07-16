@@ -701,7 +701,7 @@ static void gen_loadstore(DisasContext *dc, uint32_t op0,
 
     TCGv t0 = cpu_R[ra];
     if (offset != 0) {
-        t0 = tcg_temp_new();
+        t0 = tcg_temp_local_new();
         tcg_gen_addi_tl(t0, cpu_R[ra], sign_extend(offset, 16));
     }
 
