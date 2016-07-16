@@ -329,6 +329,8 @@ typedef struct CPUOpenRISCState {
                                  in solt so far.  */
     uint32_t btaken;          /* the SR_F bit */
 
+    target_ulong raddr;      /* Reserved address for atomic instructions */
+
     CPU_COMMON
 
     /* Fields from here on are preserved across CPU reset. */

@@ -64,6 +64,7 @@ static TCGv jmp_pc;            /* l.jr/l.jalr temp pc */
 static TCGv cpu_npc;
 static TCGv cpu_ppc;
 static TCGv_i32 env_btaken;    /* bf/bnf , F flag taken */
+static TCGv env_raddr;         /* Address reservation for l.lwa and l.swa */
 static TCGv_i32 fpcsr;
 static TCGv machi, maclo;
 static TCGv fpmaddhi, fpmaddlo;
@@ -106,6 +107,9 @@ void openrisc_translate_init(void)
     maclo = tcg_global_mem_new(cpu_env,
                                offsetof(CPUOpenRISCState, maclo),
                                "maclo");
+    env_raddr = tcg_global_mem_new(cpu_env,
+                                   offsetof(CPUOpenRISCState, raddr),
+                                   "raddr");
     fpmaddhi = tcg_global_mem_new(cpu_env,
                                   offsetof(CPUOpenRISCState, fpmaddhi),
                                   "fpmaddhi");
