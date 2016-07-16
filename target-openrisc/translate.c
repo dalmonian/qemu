@@ -700,6 +700,9 @@ static void gen_loadstore(DisasContext *dc, uint32_t op0,
 #endif
 
     TCGv t0 = cpu_R[ra];
+    TCGLabel *l1 = gen_new_label();
+    TCGLabel *l2 = gen_new_label();
+
     if (offset != 0) {
         t0 = tcg_temp_local_new();
         tcg_gen_addi_tl(t0, cpu_R[ra], sign_extend(offset, 16));
@@ -735,7 +738,19 @@ static void gen_loadstore(DisasContext *dc, uint32_t op0,
         tcg_gen_qemu_ld16s(cpu_R[rd], t0, dc->mem_idx);
         break;
 
+    case 0x33:    /* l.swa */
+        tcg_gen_brcond_tl(TCG_COND_EQ, t0, env_raddr, l1);
+        tcg_gen_andi_tl(cpu_sr, cpu_sr, ~SR_F);
+        tcg_gen_br(l2);
+        gen_set_label(l1);
+        tcg_gen_qemu_st32(cpu_R[rb], t0, dc->mem_idx);
+        tcg_gen_ori_tl(cpu_sr, cpu_sr, SR_F);
+        gen_set_label(l2);
+        break;
+
     case 0x35:    /* l.sw */
+        tcg_gen_movcond_tl(TCG_COND_EQ, env_raddr, env_raddr, t0, cpu_R[0],
+                            env_raddr);
         tcg_gen_qemu_st32(cpu_R[rb], t0, dc->mem_idx);
         break;
 
