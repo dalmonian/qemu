@@ -58,11 +58,13 @@ typedef struct DisasContext {
 
 static TCGv_env cpu_env;
 static TCGv cpu_sr;
+static TCGv cpu_cpucfgr;
 static TCGv cpu_R[32];
 static TCGv cpu_pc;
 static TCGv jmp_pc;            /* l.jr/l.jalr temp pc */
 static TCGv cpu_npc;
 static TCGv cpu_ppc;
+static TCGv env_excp;
 static TCGv_i32 env_btaken;    /* bf/bnf , F flag taken */
 static TCGv env_raddr;         /* Address reservation for l.lwa and l.swa */
 static TCGv_i32 fpcsr;
@@ -84,6 +86,9 @@ void openrisc_translate_init(void)
     cpu_env = tcg_global_reg_new_ptr(TCG_AREG0, "env");
     cpu_sr = tcg_global_mem_new(cpu_env,
                                 offsetof(CPUOpenRISCState, sr), "sr");
+    cpu_cpucfgr = tcg_global_mem_new(cpu_env,
+                                     offsetof(CPUOpenRISCState, cpucfgr),
+                                     "cpucfgr");
     env_flags = tcg_global_mem_new_i32(cpu_env,
                                        offsetof(CPUOpenRISCState, flags),
                                        "flags");
@@ -93,6 +98,8 @@ void openrisc_translate_init(void)
                                  offsetof(CPUOpenRISCState, npc), "npc");
     cpu_ppc = tcg_global_mem_new(cpu_env,
                                  offsetof(CPUOpenRISCState, ppc), "ppc");
+    env_excp = tcg_global_mem_new(cpu_env,
+                                 offsetof(CPUOpenRISCState, excp), "excp");
     jmp_pc = tcg_global_mem_new(cpu_env,
                                 offsetof(CPUOpenRISCState, jmp_pc), "jmp_pc");
     env_btaken = tcg_global_mem_new_i32(cpu_env,
@@ -121,6 +128,38 @@ void openrisc_translate_init(void)
                                       offsetof(CPUOpenRISCState, gpr[i]),
                                       regnames[i]);
     }
+}
+
+static inline void wb_SR_CY_add(int rd, int ra, int rb)
+{
+    TCGLabel *label = gen_new_label();
+    tcg_gen_andi_tl(cpu_sr, cpu_sr, ~SR_CY);
+    tcg_gen_brcond_tl(TCG_COND_LEU, cpu_R[rd], cpu_R[ra], label);
+    tcg_gen_brcond_tl(TCG_COND_LEU, cpu_R[rd], cpu_R[rb], label);
+    tcg_gen_ori_tl(cpu_sr, cpu_sr, SR_CY);
+    gen_set_label(label);
+}
+
+static inline void wb_SR_CY_sub(int rd, int ra, int rb)
+{
+    TCGLabel *label = gen_new_label();
+    tcg_gen_andi_tl(cpu_sr, cpu_sr, ~SR_CY);
+    tcg_gen_brcond_tl(TCG_COND_GEU, cpu_R[rd], cpu_R[ra], label);
+    tcg_gen_brcond_tl(TCG_COND_GEU, cpu_R[rd], cpu_R[rb], label);
+    tcg_gen_ori_tl(cpu_sr, cpu_sr, SR_CY);
+    gen_set_label(label);
+}
+
+static inline void check_excp(void)
+{
+    TCGv f0 = tcg_temp_new();
+    TCGv f1 = tcg_temp_new();
+    tcg_gen_andi_tl(f0, cpu_cpucfgr, CPUCFGR_AECSRP);
+    tcg_gen_andi_tl(f1, cpu_sr, SR_OVE);
+    tcg_gen_shli_tl(f1, f1, 2);
+    tcg_gen_setcond_tl(TCG_COND_EQ, env_excp, f0, f1);
+    tcg_temp_free(f0);
+    tcg_temp_free(f1);
 }
 
 /* Writeback SR_F translation space to execution space.  */
@@ -273,6 +312,7 @@ static void gen_jump(DisasContext *dc, uint32_t imm, uint32_t reg, uint32_t op0)
 
 static void dec_calc(DisasContext *dc, uint32_t insn)
 {
+    TCGLabel *end = gen_new_label();
     uint32_t op0, op1, op2;
     uint32_t ra, rb, rd;
     uint32_t aeon; /* Arithmetic exception on */
@@ -290,12 +330,15 @@ static void dec_calc(DisasContext *dc, uint32_t insn)
         case 0x00:    /* l.add */
             LOG_DIS("l.add r%d, r%d, r%d\n", rd, ra, rb);
             {
-                if (!aeon) {
-                    tcg_gen_add_tl(cpu_R[rd],cpu_R[ra],cpu_R[rb]);
-                } else {
-                    gen_helper_adder(cpu_R[rd], cpu_env, cpu_R[ra], cpu_R[rb],
-                        NO_CIN);
-                }
+                check_excp();
+                TCGLabel *l0 = gen_new_label();
+                tcg_gen_brcondi_tl(TCG_COND_EQ, env_excp, 1, l0);
+                tcg_gen_add_tl(cpu_R[rd],cpu_R[ra],cpu_R[rb]);
+                wb_SR_CY_add(rd, ra, rb);
+                tcg_gen_br(end);
+                gen_set_label(l0);
+                gen_helper_adder(cpu_R[rd], cpu_env, cpu_R[ra], cpu_R[rb],
+                    NO_CIN);
             }
             break;
         default:
@@ -309,15 +352,19 @@ static void dec_calc(DisasContext *dc, uint32_t insn)
         case 0x00:
             LOG_DIS("l.addc r%d, r%d, r%d\n", rd, ra, rb);
             {
-                if (!aeon) {
-                    tcg_gen_add_tl(cpu_R[rd],cpu_R[ra],cpu_R[rb]);
-                    tcg_gen_addi_tl(cpu_R[rd],cpu_R[rd],(dc->sr & SR_CY) != 0);
-                } else {
-                    TCGv ttmp = tcg_const_tl((dc->sr & SR_CY) != 0);
-                    gen_helper_adder(cpu_R[rd], cpu_env, cpu_R[ra], cpu_R[rb],
-                        ttmp);
-                    tcg_temp_free_i32(ttmp);
-                }
+                TCGLabel *l1 = gen_new_label();
+                TCGv t0 = tcg_temp_local_new();
+                tcg_gen_andi_tl(t0, cpu_sr, SR_CY);
+                tcg_gen_shri_tl(t0, t0, 10);
+                check_excp();
+                tcg_gen_brcondi_tl(TCG_COND_EQ, env_excp, 1, l1);
+                tcg_gen_add_tl(cpu_R[rd],cpu_R[ra],cpu_R[rb]);
+                tcg_gen_add_tl(cpu_R[rd],cpu_R[rd], t0);
+                wb_SR_CY_add(rd, ra, rb);
+                tcg_gen_br(end);
+                gen_set_label(l1);
+                gen_helper_adder(cpu_R[rd], cpu_env, cpu_R[ra], cpu_R[rb], t0);
+                tcg_temp_free(t0);
             }
             break;
         default:
@@ -331,11 +378,14 @@ static void dec_calc(DisasContext *dc, uint32_t insn)
         case 0x00:
             LOG_DIS("l.sub r%d, r%d, r%d\n", rd, ra, rb);
             {
-                if (!aeon) {
-                    tcg_gen_sub_tl(cpu_R[rd],cpu_R[ra],cpu_R[rb]);
-                } else {
-                    gen_helper_sub(cpu_R[rd], cpu_env, cpu_R[ra], cpu_R[rb]);
-                }
+                TCGLabel *l2 = gen_new_label();
+                check_excp();
+                tcg_gen_brcondi_tl(TCG_COND_EQ, env_excp, 1, l2);
+                tcg_gen_sub_tl(cpu_R[rd],cpu_R[ra],cpu_R[rb]);
+                wb_SR_CY_sub(rd, ra, rb);
+                tcg_gen_br(end);
+                gen_set_label(l2);
+                gen_helper_sub(cpu_R[rd], cpu_env, cpu_R[ra], cpu_R[rb]);
             }
             break;
         default:
@@ -684,6 +734,7 @@ static void dec_calc(DisasContext *dc, uint32_t insn)
         gen_illegal_exception(dc);
         break;
     }
+    gen_set_label(end);
 }
 
 static void gen_loadstore(DisasContext *dc, uint32_t op0,
