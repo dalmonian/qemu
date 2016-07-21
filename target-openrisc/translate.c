@@ -984,6 +984,11 @@ static void dec_misc(DisasContext *dc, uint32_t insn)
         goto do_load;
 #endif*/
 
+    case 0x1b:    /* l.lwa */
+        LOG_DIS("l.lwa r%d, r%d, %d\n", rd, ra, I16);
+        gen_loadstore(dc, op0, ra, rb, rd, I16);
+        break;
+
     case 0x21:    /* l.lwz */
         LOG_DIS("l.lwz r%d, r%d, %d\n", rd, ra, I16);
         gen_loadstore(dc, op0, ra, rb, rd, I16);
@@ -1117,6 +1122,11 @@ static void dec_misc(DisasContext *dc, uint32_t insn)
         mop = MO_TEQ;
         goto do_store;
 #endif*/
+
+    case 0x33:    /* l.swa */
+        LOG_DIS("l.swa %d, r%d, r%d, %d\n", I5, ra, rb, I11);
+        gen_loadstore(dc, op0, ra, rb, rd, tmp);
+        break;
 
     case 0x35:    /* l.sw */
         LOG_DIS("l.sw %d, r%d, r%d, %d\n", I5, ra, rb, I11);
