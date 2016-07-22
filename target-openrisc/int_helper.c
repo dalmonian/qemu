@@ -50,6 +50,10 @@ uint32_t HELPER(mul32)(CPUOpenRISCState *env,
 
     OpenRISCCPU *cpu = openrisc_env_get_cpu(env);
 
+    if (!ra || !rb) {
+        return 0;
+    }
+
     res = ra * rb;
 
     /* Sets overflow flag */
