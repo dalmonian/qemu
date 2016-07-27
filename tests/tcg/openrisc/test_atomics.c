@@ -3,13 +3,13 @@
 int main(void)
 {
     static int mem;
-    int addr:
-    int store:
-    int load:
+    int *addr;
+    int store;
+    int load;
     int result;
 
     addr = &mem;
-    result = mem = 0xdeadbeef;
+    result = mem = 0xb1ac;
     __asm
     ("l.lwa %0, 0(%1)\n\t"
      : "+r"(load)
@@ -21,7 +21,7 @@ int main(void)
         return -1;
     }
 
-    store = result = 0xdeadcode;
+    store = result = 0xdead;
     __asm
     ("l.lwa %0, 0(%1)\n\t"
      "l.swa 0(%1), %2\n\t"
@@ -35,11 +35,11 @@ int main(void)
         return -1;
     }
 
-    store = result = 0xcodecode;
+    store = result = 0xb1ac;
     __asm
     ("l.lwa %0, 0(%1)\n\t"
-     "l.sw 0(%1), %2\n\t" /* To cancel the address reservation */
-     "l.ori r22, r22, 0xcoffe\n\t"
+     "l.sw 0(%1), %2\n\t"
+     "l.ori r22, r22, 0xfff\n\t"
      "l.swa 0(%1), r22\n\t"
      "l.lwz %0, 0(%1)\n\t"
      : "+r"(load)

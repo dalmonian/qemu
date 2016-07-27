@@ -12,6 +12,7 @@ TESTCASES += test_addc.tst
 TESTCASES += test_addi.tst
 TESTCASES += test_addic.tst
 TESTCASES += test_and_or.tst
+TESTCASES += test_atomics.tst
 TESTCASES += test_bf.tst
 TESTCASES += test_bnf.tst
 TESTCASES += test_div.tst
