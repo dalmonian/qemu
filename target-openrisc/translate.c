@@ -577,18 +577,31 @@ static void dec_calc(DisasContext *dc, uint32_t insn)
         case 0x03:    /* l.mulu */
             LOG_DIS("l.mulu r%d, r%d, r%d\n", rd, ra, rb);
             {
-                TCGLabel *l6 = gen_new_label();
-                TCGv h = tcg_temp_new();
+                if (ra == 0 || rb == 0) {
+                    tcg_gen_movi_tl(cpu_R[rd], 0x0);
+                } else {
+                    TCGLabel *l12 = gen_new_label();
+                    TCGv h = tcg_temp_new();
 
-                tcg_gen_mulu2_tl(cpu_R[rd], h, cpu_R[ra], cpu_R[rb]);
-                tcg_gen_andi_tl(cpu_sr, cpu_sr, ~SR_CY);
-                check_excp();
-                tcg_gen_brcondi_tl(TCG_COND_EQ, h, 0x0, l6);
-                tcg_gen_ori_tl(cpu_sr, cpu_sr, SR_CY);
-                tcg_gen_brcondi_tl(TCG_COND_NE, env_excp, 1, l6);
-                gen_exception(dc, EXCP_RANGE);
-                gen_set_label(l6);
-                tcg_temp_free(h);
+                    tcg_gen_mulu2_tl(cpu_R[rd], h, cpu_R[ra], cpu_R[rb]);
+
+                    /* if excp */
+                    tcg_gen_brcondi_tl(TCG_COND_EQ, h, 0x0, l12);
+                    tcg_gen_ori_tl(cpu_sr, cpu_sr, SR_CY);
+                    check_excp();
+                    tcg_gen_brcondi_tl(TCG_COND_NE, env_excp, 1, l12);
+                    TCGv t0 = tcg_temp_new();
+                    TCGv t1 = tcg_temp_new();
+                    tcg_gen_andi_tl(t0, cpu_sr, SR_OVE);
+                    tcg_gen_andi_tl(t1, cpu_aecr, AECR_CYMULE);
+                    tcg_gen_shli_tl(t1, t1, 10);
+                    tcg_gen_brcond_tl(TCG_COND_EQ, t0, t1, l12);
+                    tcg_temp_free(t0);
+                    tcg_temp_free(t1);
+                    gen_exception(dc, EXCP_RANGE);
+                    gen_set_label(l12);
+                    tcg_temp_free(h);
+                }
             }
             break;
 
