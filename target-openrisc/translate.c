@@ -1035,15 +1035,22 @@ static void dec_misc(DisasContext *dc, uint32_t insn)
     case 0x27:    /* l.addi */
         LOG_DIS("l.addi r%d, r%d, %d\n", rd, ra, I16);
         {
-            if (I16 == 0) {
-                tcg_gen_mov_tl(cpu_R[rd], cpu_R[ra]);
-            } else if (!aeon) {
-                tcg_gen_addi_tl(cpu_R[rd], cpu_R[ra], sign_extend(I16, 16));
-            } else {
-                TCGv ttmp = tcg_const_tl(sign_extend(I16, 16));
-                gen_helper_adder(cpu_R[rd], cpu_env, cpu_R[ra], ttmp, NO_CIN);
-                tcg_temp_free_i32(ttmp);
-            }
+            TCGLabel *l0 = gen_new_label();
+            TCGLabel *l1 = gen_new_label();
+
+            /* if !excp */
+            check_excp();
+            tcg_gen_brcondi_tl(TCG_COND_EQ, env_excp, 1, l0);
+            tcg_gen_addi_tl(cpu_R[rd],cpu_R[ra], sign_extend(I16, 16));
+            wb_SR_CY_add(rd, ra, rb);
+            tcg_gen_br(l1);
+
+            /* else */
+            gen_set_label(l0);
+            TCGv_i32 ti = tcg_const_i32(sign_extend(I16, 16));
+            gen_helper_adder(cpu_R[rd], cpu_env, cpu_R[ra], ti, NO_CIN);
+            gen_set_label(l1);
+            tcg_temp_free_i32(ti);
         }
         break;
 
