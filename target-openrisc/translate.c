@@ -1057,16 +1057,29 @@ static void dec_misc(DisasContext *dc, uint32_t insn)
     case 0x28:    /* l.addic */
         LOG_DIS("l.addic r%d, r%d, %d\n", rd, ra, I16);
         {
-            if (!aeon) {
-                tcg_gen_addi_tl(cpu_R[rd], cpu_R[ra], sign_extend(I16, 16));
-                tcg_gen_addi_tl(cpu_R[rd], cpu_R[rd], (dc->sr & SR_CY) != 0);
-            } else {
-                TCGv tcy = tcg_const_tl((dc->sr & SR_CY) != 0);
-                TCGv timm = tcg_const_tl(sign_extend(I16, 16));
-                gen_helper_adder(cpu_R[rd], cpu_env, cpu_R[ra], timm, tcy);
-                tcg_temp_free_i32(tcy);
-                tcg_temp_free_i32(timm);
-            }
+            TCGLabel *l0 = gen_new_label();
+            TCGLabel *l1 = gen_new_label();
+            TCGv t0 = tcg_temp_new();
+
+            /* Get carry from sr[cy] */
+            tcg_gen_andi_tl(t0, cpu_sr, SR_CY);
+            tcg_gen_shri_tl(t0, t0, 10);
+
+            /* if !excp */
+            check_excp();
+            tcg_gen_brcondi_tl(TCG_COND_EQ, env_excp, 1, l0);
+            tcg_gen_addi_tl(cpu_R[rd],cpu_R[ra], sign_extend(I16, 16));
+            tcg_gen_add_tl(cpu_R[rd],cpu_R[rd], t0);
+            wb_SR_CY_add(rd, ra, rb);
+            tcg_gen_br(l1);
+
+            /* else */
+            gen_set_label(l0);
+            TCGv_i32 ti = tcg_const_i32(sign_extend(I16, 16));
+            gen_helper_adder(cpu_R[rd], cpu_env, cpu_R[ra], ti, t0);
+            tcg_temp_free_i32(ti);
+            gen_set_label(l1);
+            tcg_temp_free(t0);
         }
         break;
 
