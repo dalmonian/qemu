@@ -464,17 +464,23 @@ static void dec_calc(DisasContext *dc, uint32_t insn)
         case 0x03:    /* l.mul */
             LOG_DIS("l.mul r%d, r%d, r%d\n", rd, ra, rb);
             {
-                TCGLabel *l3 = gen_new_label();
+                TCGLabel *l0 = gen_new_label();
+                TCGLabel *l1 = gen_new_label();
 
-                /* if !excp then cpu_R[rd] = cpu_R[ra] * cpu_R[rb]*/
-                check_excp();
-                tcg_gen_brcondi_tl(TCG_COND_EQ, env_excp, 1, l3);
-                tcg_gen_mul_tl(cpu_R[rd], cpu_R[ra], cpu_R[rb]);
-                tcg_gen_br(end);
+                if (ra == 0 || rb == 0) {
+                    tcg_gen_movi_tl(cpu_R[rd], 0x0);
+                } else {
+                    /* if !excp */
+                    check_excp();
+                    tcg_gen_brcondi_tl(TCG_COND_EQ, env_excp, 1, l0);
+                    tcg_gen_mul_tl(cpu_R[rd], cpu_R[ra], cpu_R[rb]);
+                    tcg_gen_br(l1);
 
-                /* else, fancy function */
-                gen_set_label(l3);
-                gen_helper_mul32(cpu_R[rd], cpu_env, cpu_R[ra], cpu_R[rb]);
+                    /* else */
+                    gen_set_label(l0);
+                    gen_helper_mul32(cpu_R[rd], cpu_env, cpu_R[ra], cpu_R[rb]);
+                    gen_set_label(l1);
+                }
             }
             break;
         default:
@@ -501,14 +507,27 @@ static void dec_calc(DisasContext *dc, uint32_t insn)
         case 0x03:    /* l.div */
             LOG_DIS("l.div r%d, r%d, r%d\n", rd, ra, rb);
             {
-                TCGLabel *l4 = gen_new_label();
+                TCGLabel *l8 = gen_new_label();
+                TCGLabel *l9 = gen_new_label();
+
+                /* if cpu_R[rb] != 0 */
                 wb_SR_OV_div(rb);
-                tcg_gen_brcondi_tl(TCG_COND_EQ, cpu_R[rb], 0x0, l4);
+                tcg_gen_brcondi_tl(TCG_COND_EQ, cpu_R[rb], 0x0, l8);
                 tcg_gen_div_tl(cpu_R[rd], cpu_R[ra], cpu_R[rb]);
-                gen_set_label(l4);
+                tcg_gen_br(l9);
+
+                /* else if excp */
+                gen_set_label(l8);
                 check_excp();
-                tcg_gen_brcondi_tl(TCG_COND_NE, env_excp, 1, end);
+                tcg_gen_brcondi_tl(TCG_COND_NE, env_excp, 1, l9);
+                TCGv t0 = tcg_temp_new();
+                TCGv t1 = tcg_temp_new();
+                tcg_gen_andi_tl(t0, cpu_sr, SR_OVE);
+                tcg_gen_andi_tl(t1, cpu_aecr, AECR_DBZE);
+                tcg_gen_shli_tl(t1, t1, 8);
+                tcg_gen_brcond_tl(TCG_COND_NE, t0, t1, l9);
                 gen_exception(dc, EXCP_RANGE);
+                gen_set_label(l9);
             }
             break;
 
@@ -523,14 +542,27 @@ static void dec_calc(DisasContext *dc, uint32_t insn)
         case 0x03:    /* l.divu */
             LOG_DIS("l.divu r%d, r%d, r%d\n", rd, ra, rb);
             {
-                TCGLabel *l5 = gen_new_label();
+                TCGLabel *l10 = gen_new_label();
+                TCGLabel *l11 = gen_new_label();
+
+                /* if cpu_R[rb] != 0 */
                 wb_SR_OV_div(rb);
-                tcg_gen_brcondi_tl(TCG_COND_EQ, cpu_R[rb], 0x0, l5);
-                tcg_gen_divu_tl(cpu_R[rd], cpu_R[ra], cpu_R[rb]);
-                gen_set_label(l5);
+                tcg_gen_brcondi_tl(TCG_COND_EQ, cpu_R[rb], 0x0, l10);
+                tcg_gen_div_tl(cpu_R[rd], cpu_R[ra], cpu_R[rb]);
+                tcg_gen_br(l11);
+
+                /* else if excp */
+                gen_set_label(l10);
                 check_excp();
-                tcg_gen_brcondi_tl(TCG_COND_NE, env_excp, 1, end);
+                tcg_gen_brcondi_tl(TCG_COND_NE, env_excp, 1, l11);
+                TCGv t0 = tcg_temp_new();
+                TCGv t1 = tcg_temp_new();
+                tcg_gen_andi_tl(t0, cpu_sr, SR_OVE);
+                tcg_gen_andi_tl(t1, cpu_aecr, AECR_DBZE);
+                tcg_gen_shli_tl(t1, t1, 8);
+                tcg_gen_brcond_tl(TCG_COND_NE, t0, t1, l11);
                 gen_exception(dc, EXCP_RANGE);
+                gen_set_label(l11);
             }
             break;
 
