@@ -323,7 +323,6 @@ static void gen_jump(DisasContext *dc, uint32_t imm, uint32_t reg, uint32_t op0)
 
 static void dec_calc(DisasContext *dc, uint32_t insn)
 {
-    TCGLabel *end = gen_new_label();
     uint32_t op0, op1, op2;
     uint32_t ra, rb, rd;
     op0 = extract32(insn, 0, 4);
@@ -748,7 +747,6 @@ static void dec_calc(DisasContext *dc, uint32_t insn)
         gen_illegal_exception(dc);
         break;
     }
-    gen_set_label(end);
 }
 
 static void gen_loadstore(DisasContext *dc, uint32_t op0,
@@ -1194,130 +1192,128 @@ static void dec_mac(DisasContext *dc, uint32_t insn)
 {
     uint32_t op0;
     uint32_t ra, rb;
-    uint32_t aeon; /* Arithmetic exception on */
     op0 = extract32(insn, 0, 4);
     ra = extract32(insn, 16, 5);
     rb = extract32(insn, 11, 5);
-    aeon = (dc->flags & CPUCFGR_AECSRP) && (dc->sr & SR_OVE);
 
     switch (op0) {
     case 0x0001:    /* l.mac */
         LOG_DIS("l.mac r%d, r%d\n", ra, rb);
         {
-            if (!aeon) {
-                TCGv_i32 t0 = tcg_temp_new_i32();
-                TCGv_i64 t1 = tcg_temp_new_i64();
-                TCGv_i64 t2 = tcg_temp_new_i64();
-                tcg_gen_mul_tl(t0, cpu_R[ra], cpu_R[rb]);
-                tcg_gen_ext_i32_i64(t1, t0);
-                tcg_gen_concat_i32_i64(t2, maclo, machi);
-                tcg_gen_add_i64(t2, t2, t1);
-                tcg_gen_extrl_i64_i32(maclo, t2);
-                tcg_gen_shri_i64(t2, t2, 32);
-                tcg_gen_extrl_i64_i32(machi, t2);
-                tcg_temp_free_i32(t0);
-                tcg_temp_free_i64(t1);
-                tcg_temp_free_i64(t2);
-            } else {
-                TCGv_i64 t3 = tcg_temp_new_i64();
-                tcg_gen_concat_i32_i64(t3, maclo, machi);
-                gen_helper_mac(t3, cpu_env, cpu_R[ra], cpu_R[rb], t3);
-                tcg_gen_extrl_i64_i32(maclo, t3);
-                tcg_gen_shri_i64(t3, t3, 32);
-                tcg_gen_extrl_i64_i32(machi, t3);
-                tcg_temp_free_i64(t3);
-            }
+            TCGLabel *l0 = gen_new_label();
+            TCGLabel *l1 = gen_new_label();
+
+            /* if !excp */
+            check_excp();
+            tcg_gen_brcondi_tl(TCG_COND_EQ, env_excp, 0x1, l0);
+            TCGv t0 = tcg_temp_new();
+            TCGv t1 = tcg_temp_new();
+            tcg_gen_muls2_tl(t0, t1, cpu_R[ra], cpu_R[rb]);
+            tcg_gen_add2_tl(maclo, machi, maclo, machi, t0, t1);
+            tcg_temp_free(t0);
+            tcg_temp_free(t1);
+            tcg_gen_br(l1);
+
+            /* else */
+            gen_set_label(l0);
+            TCGv_i64 t2 = tcg_temp_new_i64();
+            tcg_gen_concat_i32_i64(t2, maclo, machi);
+            gen_helper_mac(t2, cpu_env, cpu_R[ra], cpu_R[rb], t2);
+            tcg_gen_extrl_i64_i32(maclo, t2);
+            tcg_gen_shri_i64(t2, t2, 32);
+            tcg_gen_extrl_i64_i32(machi, t2);
+            tcg_temp_free_i64(t2);
+            gen_set_label(l1);
         }
         break;
 
     case 0x0002:    /* l.msb */
         LOG_DIS("l.msb r%d, r%d\n", ra, rb);
         {
-            if (!aeon) {
-                TCGv_i32 t0 = tcg_temp_new_i32();
-                TCGv_i64 t1 = tcg_temp_new_i64();
-                TCGv_i64 t2 = tcg_temp_new_i64();
-                tcg_gen_mul_tl(t0, cpu_R[ra], cpu_R[rb]);
-                tcg_gen_ext_i32_i64(t1, t0);
-                tcg_gen_concat_i32_i64(t2, maclo, machi);
-                tcg_gen_sub_i64(t2, t2, t1);
-                tcg_gen_extrl_i64_i32(maclo, t2);
-                tcg_gen_shri_i64(t2, t2, 32);
-                tcg_gen_extrl_i64_i32(machi, t2);
-                tcg_temp_free_i32(t0);
-                tcg_temp_free_i64(t1);
-                tcg_temp_free_i64(t2);
-            } else {
-                TCGv_i64 t3 = tcg_temp_new_i64();
-                tcg_gen_concat_i32_i64(t3, maclo, machi);
-                gen_helper_msb(t3, cpu_env, cpu_R[ra], cpu_R[rb], t3);
-                tcg_gen_extrl_i64_i32(maclo, t3);
-                tcg_gen_shri_i64(t3, t3, 32);
-                tcg_gen_extrl_i64_i32(machi, t3);
-                tcg_temp_free_i64(t3);
-            }
+            TCGLabel *l0 = gen_new_label();
+            TCGLabel *l1 = gen_new_label();
+
+            /* if !excp */
+            check_excp();
+            tcg_gen_brcondi_tl(TCG_COND_EQ, env_excp, 0x1, l0);
+            TCGv t0 = tcg_temp_new();
+            TCGv t1 = tcg_temp_new();
+            tcg_gen_muls2_tl(t0, t1, cpu_R[ra], cpu_R[rb]);
+            tcg_gen_sub2_tl(maclo, machi, maclo, machi, t0, t1);
+            tcg_temp_free(t0);
+            tcg_temp_free(t1);
+            tcg_gen_br(l1);
+
+            /* else */
+            gen_set_label(l0);
+            TCGv_i64 t2 = tcg_temp_new_i64();
+            tcg_gen_concat_i32_i64(t2, maclo, machi);
+            gen_helper_msb(t2, cpu_env, cpu_R[ra], cpu_R[rb], t2);
+            tcg_gen_extrl_i64_i32(maclo, t2);
+            tcg_gen_shri_i64(t2, t2, 32);
+            tcg_gen_extrl_i64_i32(machi, t2);
+            tcg_temp_free_i64(t2);
+            gen_set_label(l1);
         }
         break;
 
     case 0x0003:    /* l.macu */
         LOG_DIS("l.macu r%d, r%d\n", ra, rb);
         {
-            if (!aeon) {
-                TCGv_i32 t0 = tcg_temp_new_i32();
-                TCGv_i32 h = tcg_temp_new_i32();
-                TCGv_i64 t1 = tcg_temp_new_i64();
-                TCGv_i64 t2 = tcg_temp_new_i64();
-                tcg_gen_mulu2_tl(t0, h, cpu_R[ra], cpu_R[rb]);
-                tcg_gen_ext_i32_i64(t1, t0);
-                tcg_gen_concat_i32_i64(t2, maclo, machi);
-                tcg_gen_add_i64(t2, t2, t1);
-                tcg_gen_extrl_i64_i32(maclo, t2);
-                tcg_gen_shri_i64(t2, t2, 32);
-                tcg_gen_extrl_i64_i32(machi, t2);
-                tcg_temp_free_i32(t0);
-                tcg_temp_free_i32(h);
-                tcg_temp_free_i64(t1);
-                tcg_temp_free_i64(t2);
-            } else {
-                TCGv_i64 t3 = tcg_temp_new_i64();
-                tcg_gen_concat_i32_i64(t3, maclo, machi);
-                gen_helper_macu(t3, cpu_env, cpu_R[ra], cpu_R[rb], t3);
-                tcg_gen_extrl_i64_i32(maclo, t3);
-                tcg_gen_shri_i64(t3, t3, 32);
-                tcg_gen_extrl_i64_i32(machi, t3);
-                tcg_temp_free_i64(t3);
-            }
+            TCGLabel *l0 = gen_new_label();
+            TCGLabel *l1 = gen_new_label();
+
+            /* if !excp */
+            check_excp();
+            tcg_gen_brcondi_tl(TCG_COND_EQ, env_excp, 0x1, l0);
+            TCGv t0 = tcg_temp_new();
+            TCGv t1 = tcg_temp_new();
+            tcg_gen_mulu2_tl(t0, t1, cpu_R[ra], cpu_R[rb]);
+            tcg_gen_add2_tl(maclo, machi, maclo, machi, t0, t1);
+            tcg_temp_free(t0);
+            tcg_temp_free(t1);
+            tcg_gen_br(l1);
+
+            /* else */
+            gen_set_label(l0);
+            TCGv_i64 t2 = tcg_temp_new_i64();
+            tcg_gen_concat_i32_i64(t2, maclo, machi);
+            gen_helper_macu(t2, cpu_env, cpu_R[ra], cpu_R[rb], t2);
+            tcg_gen_extrl_i64_i32(maclo, t2);
+            tcg_gen_shri_i64(t2, t2, 32);
+            tcg_gen_extrl_i64_i32(machi, t2);
+            tcg_temp_free_i64(t2);
+            gen_set_label(l1);
         }
         break;
 
     case 0x0004:    /* l.msbu */
         LOG_DIS("l.msbu r%d, r%d\n", ra, rb);
         {
-            if (!aeon) {
-                TCGv_i32 t0 = tcg_temp_new_i32();
-                TCGv_i32 h = tcg_temp_new_i32();
-                TCGv_i64 t1 = tcg_temp_new_i64();
-                TCGv_i64 t2 = tcg_temp_new_i64();
-                tcg_gen_mulu2_tl(t0, h, cpu_R[ra], cpu_R[rb]);
-                tcg_gen_ext_i32_i64(t1, t0);
-                tcg_gen_concat_i32_i64(t2, maclo, machi);
-                tcg_gen_sub_i64(t2, t2, t1);
-                tcg_gen_extrl_i64_i32(maclo, t2);
-                tcg_gen_shri_i64(t2, t2, 32);
-                tcg_gen_extrl_i64_i32(machi, t2);
-                tcg_temp_free_i32(t0);
-                tcg_temp_free_i32(h);
-                tcg_temp_free_i64(t1);
-                tcg_temp_free_i64(t2);
-            } else {
-                TCGv_i64 t3 = tcg_temp_new_i64();
-                tcg_gen_concat_i32_i64(t3, maclo, machi);
-                gen_helper_msbu(t3, cpu_env, cpu_R[ra], cpu_R[rb], t3);
-                tcg_gen_extrl_i64_i32(maclo, t3);
-                tcg_gen_shri_i64(t3, t3, 32);
-                tcg_gen_extrl_i64_i32(machi, t3);
-                tcg_temp_free_i64(t3);
-            }
+            TCGLabel *l0 = gen_new_label();
+            TCGLabel *l1 = gen_new_label();
+
+            /* if !excp */
+            check_excp();
+            tcg_gen_brcondi_tl(TCG_COND_EQ, env_excp, 0x1, l0);
+            TCGv t0 = tcg_temp_new();
+            TCGv t1 = tcg_temp_new();
+            tcg_gen_mulu2_tl(t0, t1, cpu_R[ra], cpu_R[rb]);
+            tcg_gen_sub2_tl(maclo, machi, maclo, machi, t0, t1);
+            tcg_temp_free(t0);
+            tcg_temp_free(t1);
+            tcg_gen_br(l1);
+
+            /* else */
+            gen_set_label(l0);
+            TCGv_i64 t2 = tcg_temp_new_i64();
+            tcg_gen_concat_i32_i64(t2, maclo, machi);
+            gen_helper_msbu(t2, cpu_env, cpu_R[ra], cpu_R[rb], t2);
+            tcg_gen_extrl_i64_i32(maclo, t2);
+            tcg_gen_shri_i64(t2, t2, 32);
+            tcg_gen_extrl_i64_i32(machi, t2);
+            tcg_temp_free_i64(t2);
+            gen_set_label(l1);
         }
         break;
 
