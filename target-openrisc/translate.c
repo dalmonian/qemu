@@ -842,7 +842,6 @@ static void dec_misc(DisasContext *dc, uint32_t insn)
 {
     uint32_t op0, op1;
     uint32_t ra, rb, rd;
-    uint32_t aeon;
 #ifdef OPENRISC_DISAS
     uint32_t L6, K5;
 #endif
@@ -862,8 +861,6 @@ static void dec_misc(DisasContext *dc, uint32_t insn)
     I11 = extract32(insn, 0, 11);
     N26 = extract32(insn, 0, 26);
     tmp = (I5<<11) + I11;
-
-    aeon = (dc->flags & CPUCFGR_AECSRP) && (dc->sr & SR_OVE);
 
     switch (op0) {
     case 0x00:    /* l.j */
@@ -1100,16 +1097,27 @@ static void dec_misc(DisasContext *dc, uint32_t insn)
 
     case 0x2c:    /* l.muli */
         LOG_DIS("l.muli r%d, r%d, %d\n", rd, ra, I16);
-        if (ra != 0 && I16 != 0) {
-            if (!aeon) {
-                tcg_gen_muli_tl(cpu_R[rd], cpu_R[ra], sign_extend(I16, 16));
+        {
+            TCGLabel *l0 = gen_new_label();
+            TCGLabel *l1 = gen_new_label();
+
+            if (ra == 0 || I16 == 0) {
+                tcg_gen_movi_tl(cpu_R[ra], 0x0);
             } else {
-                TCGv_i32 im = tcg_const_i32(I16);
-                gen_helper_mul32(cpu_R[rd], cpu_env, cpu_R[ra], im);
-                tcg_temp_free_i32(im);
+                TCGv ti = tcg_const_tl(sign_extend(I16, 16));
+
+                /* if !excp */
+                check_excp();
+                tcg_gen_brcondi_tl(TCG_COND_EQ, env_excp, 0x1, l0);
+                tcg_gen_mul_tl(cpu_R[rd], cpu_R[ra], ti);
+                tcg_gen_br(l1);
+
+                /* else */
+                gen_set_label(l0);
+                gen_helper_mul32(cpu_R[rd], cpu_env, cpu_R[ra], ti);
+                gen_set_label(l1);
+                tcg_temp_free(ti);
             }
-        } else {
-            tcg_gen_movi_tl(cpu_R[rd], 0x0);
         }
         break;
 
