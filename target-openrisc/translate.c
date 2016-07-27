@@ -401,14 +401,20 @@ static void dec_calc(DisasContext *dc, uint32_t insn)
         case 0x00:
             LOG_DIS("l.sub r%d, r%d, r%d\n", rd, ra, rb);
             {
-                TCGLabel *l2 = gen_new_label();
+                TCGLabel *l0 = gen_new_label();
+                TCGLabel *l1 = gen_new_label();
+
+                /* if !excp */
                 check_excp();
-                tcg_gen_brcondi_tl(TCG_COND_EQ, env_excp, 1, l2);
+                tcg_gen_brcondi_tl(TCG_COND_EQ, env_excp, 1, l0);
                 tcg_gen_sub_tl(cpu_R[rd],cpu_R[ra],cpu_R[rb]);
                 wb_SR_CY_sub(rd, ra, rb);
-                tcg_gen_br(end);
-                gen_set_label(l2);
+                tcg_gen_br(l1);
+
+                /* else */
+                gen_set_label(l0);
                 gen_helper_sub(cpu_R[rd], cpu_env, cpu_R[ra], cpu_R[rb]);
+                gen_set_label(l1);
             }
             break;
         default:
