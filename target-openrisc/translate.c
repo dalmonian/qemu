@@ -64,6 +64,7 @@ static TCGv cpu_pc;
 static TCGv jmp_pc;            /* l.jr/l.jalr temp pc */
 static TCGv cpu_npc;
 static TCGv cpu_ppc;
+static TCGv cpu_aecr;          /* Arithmetic exception control register */
 static TCGv env_excp;
 static TCGv_i32 env_btaken;    /* bf/bnf , F flag taken */
 static TCGv env_raddr;         /* Address reservation for l.lwa and l.swa */
@@ -98,6 +99,8 @@ void openrisc_translate_init(void)
                                  offsetof(CPUOpenRISCState, npc), "npc");
     cpu_ppc = tcg_global_mem_new(cpu_env,
                                  offsetof(CPUOpenRISCState, ppc), "ppc");
+    cpu_aecr = tcg_global_mem_new(cpu_env,
+                                  offsetof(CPUOpenRISCState, aecr), "aecr");
     env_excp = tcg_global_mem_new(cpu_env,
                                  offsetof(CPUOpenRISCState, excp), "excp");
     jmp_pc = tcg_global_mem_new(cpu_env,
