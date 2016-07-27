@@ -136,7 +136,7 @@ static inline void wb_SR_OV_div(int rb)
 {
     TCGLabel *label = gen_new_label();
     tcg_gen_andi_tl(cpu_sr, cpu_sr, ~SR_OV);
-    tcg_gen_brcond_tl(TCG_COND_EQ, cpu_R[rb], 0x0, label);
+    tcg_gen_brcondi_tl(TCG_COND_EQ, cpu_R[rb], 0x0, label);
     tcg_gen_ori_tl(cpu_sr, cpu_sr, SR_OV);
     gen_set_label(label);
 }
@@ -145,8 +145,8 @@ static inline void wb_SR_CY_add(int rd, int ra, int rb)
 {
     TCGLabel *label = gen_new_label();
     tcg_gen_andi_tl(cpu_sr, cpu_sr, ~SR_CY);
-    tcg_gen_brcond_tl(TCG_COND_LEU, cpu_R[rd], cpu_R[ra], label);
-    tcg_gen_brcond_tl(TCG_COND_LEU, cpu_R[rd], cpu_R[rb], label);
+    tcg_gen_brcond_tl(TCG_COND_GEU, cpu_R[rd], cpu_R[ra], label);
+    tcg_gen_brcond_tl(TCG_COND_GEU, cpu_R[rd], cpu_R[rb], label);
     tcg_gen_ori_tl(cpu_sr, cpu_sr, SR_CY);
     gen_set_label(label);
 }
