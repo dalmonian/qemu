@@ -911,33 +911,32 @@ static void dec_misc(DisasContext *dc, uint32_t insn)
     case 0x13:    /* l.maci */
         LOG_DIS("l.maci %d, r%d, %d\n", I5, ra, I11);
         {
-            if (!aeon) {
-                TCGv_i64 t1 = tcg_temp_new_i64();
-                TCGv_i64 t2 = tcg_temp_new_i64();
-                TCGv_i32 dst = tcg_temp_new_i32();
-                TCGv ttmp = tcg_const_tl(tmp);
-                tcg_gen_mul_tl(dst, cpu_R[ra], ttmp);
-                tcg_gen_ext_i32_i64(t1, dst);
-                tcg_gen_concat_i32_i64(t2, maclo, machi);
-                tcg_gen_add_i64(t2, t2, t1);
-                tcg_gen_extrl_i64_i32(maclo, t2);
-                tcg_gen_shri_i64(t2, t2, 32);
-                tcg_gen_extrl_i64_i32(machi, t2);
-                tcg_temp_free_i32(dst);
-                tcg_temp_free(ttmp);
-                tcg_temp_free_i64(t1);
-                tcg_temp_free_i64(t2);
-            } else {
-                TCGv_i64 t3 = tcg_temp_new_i64();
-                TCGv ttmp = tcg_const_tl(sign_extend(I16, 16));
-                tcg_gen_concat_i32_i64(t3, maclo, machi);
-                gen_helper_mac(t3, cpu_env, cpu_R[ra], ttmp, t3);
-                tcg_gen_extrl_i64_i32(maclo, t3);
-                tcg_gen_shri_i64(t3, t3, 32);
-                tcg_gen_extrl_i64_i32(machi, t3);
-                tcg_temp_free_i64(t3);
-                tcg_temp_free_i32(ttmp);
-            }
+            TCGLabel *l0 = gen_new_label();
+            TCGLabel *l1 = gen_new_label();
+            TCGv ti = tcg_const_tl((I5 << 16) | I16);
+
+            /* if !excp */
+            check_excp();
+            tcg_gen_brcondi_tl(TCG_COND_EQ, env_excp, 1, l0);
+            TCGv t0 = tcg_temp_new();
+            TCGv t1 = tcg_temp_new();
+            tcg_gen_muls2_tl(t0, t1, cpu_R[ra], ti);
+            tcg_gen_add2_tl(maclo, machi, maclo, machi, t0, t1);
+            tcg_temp_free(t0);
+            tcg_temp_free(t1);
+            tcg_gen_br(l1);
+
+            /* else */
+            gen_set_label(l0);
+            TCGv_i64 t2 = tcg_temp_new_i64();
+            tcg_gen_concat_i32_i64(t2, maclo, machi);
+            gen_helper_mac(t2, cpu_env, cpu_R[ra], ti, t2);
+            tcg_gen_extrl_i64_i32(maclo, t2);
+            tcg_gen_shri_i64(t2, t2, 32);
+            tcg_gen_extrl_i64_i32(machi, t2);
+            tcg_temp_free_i64(t2);
+            gen_set_label(l1);
+            tcg_temp_free(ti);
         }
         break;
 
