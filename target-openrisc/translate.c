@@ -367,18 +367,26 @@ static void dec_calc(DisasContext *dc, uint32_t insn)
         case 0x00:
             LOG_DIS("l.addc r%d, r%d, r%d\n", rd, ra, rb);
             {
+                TCGLabel *l0 = gen_new_label();
                 TCGLabel *l1 = gen_new_label();
-                TCGv t0 = tcg_temp_local_new();
+                TCGv t0 = tcg_temp_new();
+
+                /* Get carry sr[cy] */
                 tcg_gen_andi_tl(t0, cpu_sr, SR_CY);
                 tcg_gen_shri_tl(t0, t0, 10);
+
+                /* if !excp */
                 check_excp();
-                tcg_gen_brcondi_tl(TCG_COND_EQ, env_excp, 1, l1);
+                tcg_gen_brcondi_tl(TCG_COND_EQ, env_excp, 1, l0);
                 tcg_gen_add_tl(cpu_R[rd],cpu_R[ra],cpu_R[rb]);
                 tcg_gen_add_tl(cpu_R[rd],cpu_R[rd], t0);
                 wb_SR_CY_add(rd, ra, rb);
-                tcg_gen_br(end);
-                gen_set_label(l1);
+                tcg_gen_br(l1);
+
+                /* else */
+                gen_set_label(l0);
                 gen_helper_adder(cpu_R[rd], cpu_env, cpu_R[ra], cpu_R[rb], t0);
+                gen_set_label(l1);
                 tcg_temp_free(t0);
             }
             break;
