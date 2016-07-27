@@ -339,15 +339,21 @@ static void dec_calc(DisasContext *dc, uint32_t insn)
         case 0x00:    /* l.add */
             LOG_DIS("l.add r%d, r%d, r%d\n", rd, ra, rb);
             {
-                check_excp();
                 TCGLabel *l0 = gen_new_label();
+                TCGLabel *l1 = gen_new_label();
+
+                /* if !excp */
+                check_excp();
                 tcg_gen_brcondi_tl(TCG_COND_EQ, env_excp, 1, l0);
                 tcg_gen_add_tl(cpu_R[rd],cpu_R[ra],cpu_R[rb]);
                 wb_SR_CY_add(rd, ra, rb);
-                tcg_gen_br(end);
+                tcg_gen_br(l1);
+
+                /* else */
                 gen_set_label(l0);
                 gen_helper_adder(cpu_R[rd], cpu_env, cpu_R[ra], cpu_R[rb],
                     NO_CIN);
+                gen_set_label(l1);
             }
             break;
         default:
