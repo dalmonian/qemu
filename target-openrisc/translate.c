@@ -49,6 +49,7 @@ typedef struct DisasContext {
     TranslationBlock *tb;
     target_ulong pc, ppc, npc;
     uint32_t tb_flags, synced_flags, flags;
+    uint32_t cpufeature;
     uint32_t is_jmp;
     uint32_t mem_idx;
     uint32_t sr;
@@ -338,21 +339,25 @@ static void dec_calc(DisasContext *dc, uint32_t insn)
         case 0x00:    /* l.add */
             LOG_DIS("l.add r%d, r%d, r%d\n", rd, ra, rb);
             {
-                TCGLabel *l0 = gen_new_label();
-                TCGLabel *l1 = gen_new_label();
+                if (dc->flags & CPUCFGR_NOFLAGS) {
+                    tcg_gen_add_tl(cpu_R[rd],cpu_R[ra],cpu_R[rb]);
+                } else {
+                    TCGLabel *l0 = gen_new_label();
+                    TCGLabel *l1 = gen_new_label();
 
-                /* if !excp */
-                check_excp();
-                tcg_gen_brcondi_tl(TCG_COND_EQ, env_excp, 1, l0);
-                tcg_gen_add_tl(cpu_R[rd],cpu_R[ra],cpu_R[rb]);
-                wb_SR_CY_add(rd, ra, rb);
-                tcg_gen_br(l1);
+                    /* if !excp */
+                    check_excp();
+                    tcg_gen_brcondi_tl(TCG_COND_EQ, env_excp, 1, l0);
+                    tcg_gen_add_tl(cpu_R[rd],cpu_R[ra],cpu_R[rb]);
+                    wb_SR_CY_add(rd, ra, rb);
+                    tcg_gen_br(l1);
 
-                /* else */
-                gen_set_label(l0);
-                gen_helper_adder(cpu_R[rd], cpu_env, cpu_R[ra], cpu_R[rb],
-                    NO_CIN);
-                gen_set_label(l1);
+                    /* else */
+                    gen_set_label(l0);
+                    gen_helper_adder(cpu_R[rd], cpu_env, cpu_R[ra], cpu_R[rb],
+                        NO_CIN);
+                    gen_set_label(l1);
+                }
             }
             break;
         default:
@@ -366,27 +371,32 @@ static void dec_calc(DisasContext *dc, uint32_t insn)
         case 0x00:
             LOG_DIS("l.addc r%d, r%d, r%d\n", rd, ra, rb);
             {
-                TCGLabel *l0 = gen_new_label();
-                TCGLabel *l1 = gen_new_label();
-                TCGv t0 = tcg_temp_new();
+                if (dc->flags & CPUCFGR_NOFLAGS) {
+                    gen_illegal_exception(dc);
+                } else {
+                    TCGLabel *l0 = gen_new_label();
+                    TCGLabel *l1 = gen_new_label();
+                    TCGv t0 = tcg_temp_new();
 
-                /* Get carry sr[cy] */
-                tcg_gen_andi_tl(t0, cpu_sr, SR_CY);
-                tcg_gen_shri_tl(t0, t0, 10);
+                    /* Get carry sr[cy] */
+                    tcg_gen_andi_tl(t0, cpu_sr, SR_CY);
+                    tcg_gen_shri_tl(t0, t0, 10);
 
-                /* if !excp */
-                check_excp();
-                tcg_gen_brcondi_tl(TCG_COND_EQ, env_excp, 1, l0);
-                tcg_gen_add_tl(cpu_R[rd],cpu_R[ra],cpu_R[rb]);
-                tcg_gen_add_tl(cpu_R[rd],cpu_R[rd], t0);
-                wb_SR_CY_add(rd, ra, rb);
-                tcg_gen_br(l1);
+                    /* if !excp */
+                    check_excp();
+                    tcg_gen_brcondi_tl(TCG_COND_EQ, env_excp, 1, l0);
+                    tcg_gen_add_tl(cpu_R[rd],cpu_R[ra],cpu_R[rb]);
+                    tcg_gen_add_tl(cpu_R[rd],cpu_R[rd], t0);
+                    wb_SR_CY_add(rd, ra, rb);
+                    tcg_gen_br(l1);
 
-                /* else */
-                gen_set_label(l0);
-                gen_helper_adder(cpu_R[rd], cpu_env, cpu_R[ra], cpu_R[rb], t0);
-                gen_set_label(l1);
-                tcg_temp_free(t0);
+                    /* else */
+                    gen_set_label(l0);
+                    gen_helper_adder(cpu_R[rd], cpu_env, cpu_R[ra], cpu_R[rb],
+                                     t0);
+                    gen_set_label(l1);
+                    tcg_temp_free(t0);
+                }
             }
             break;
         default:
@@ -400,20 +410,24 @@ static void dec_calc(DisasContext *dc, uint32_t insn)
         case 0x00:
             LOG_DIS("l.sub r%d, r%d, r%d\n", rd, ra, rb);
             {
-                TCGLabel *l0 = gen_new_label();
-                TCGLabel *l1 = gen_new_label();
+                if (dc->flags & CPUCFGR_NOFLAGS) {
+                    tcg_gen_sub_tl(cpu_R[rd],cpu_R[ra],cpu_R[rb]);
+                } else {
+                    TCGLabel *l0 = gen_new_label();
+                    TCGLabel *l1 = gen_new_label();
 
-                /* if !excp */
-                check_excp();
-                tcg_gen_brcondi_tl(TCG_COND_EQ, env_excp, 1, l0);
-                tcg_gen_sub_tl(cpu_R[rd],cpu_R[ra],cpu_R[rb]);
-                wb_SR_CY_sub(rd, ra, rb);
-                tcg_gen_br(l1);
+                    /* if !excp */
+                    check_excp();
+                    tcg_gen_brcondi_tl(TCG_COND_EQ, env_excp, 1, l0);
+                    tcg_gen_sub_tl(cpu_R[rd],cpu_R[ra],cpu_R[rb]);
+                    wb_SR_CY_sub(rd, ra, rb);
+                    tcg_gen_br(l1);
 
-                /* else */
-                gen_set_label(l0);
-                gen_helper_sub(cpu_R[rd], cpu_env, cpu_R[ra], cpu_R[rb]);
-                gen_set_label(l1);
+                    /* else */
+                    gen_set_label(l0);
+                    gen_helper_sub(cpu_R[rd], cpu_env, cpu_R[ra], cpu_R[rb]);
+                    gen_set_label(l1);
+                }
             }
             break;
         default:
@@ -506,27 +520,35 @@ static void dec_calc(DisasContext *dc, uint32_t insn)
         case 0x03:    /* l.div */
             LOG_DIS("l.div r%d, r%d, r%d\n", rd, ra, rb);
             {
-                TCGLabel *l8 = gen_new_label();
-                TCGLabel *l9 = gen_new_label();
+                if (dc->flags & CPUCFGR_NOFLAGS) {
+                    TCGLabel *l7 = gen_new_label();
+                    tcg_gen_brcondi_tl(TCG_COND_EQ, cpu_R[rb], 0x0, l7);
+                    gen_illegal_exception(dc);
+                    gen_set_label(l7);
+                    tcg_gen_div_tl(cpu_R[rd], cpu_R[ra], cpu_R[rb]);
+                } else {
+                    TCGLabel *l8 = gen_new_label();
+                    TCGLabel *l9 = gen_new_label();
+                    TCGv t0 = tcg_temp_new();
+                    TCGv t1 = tcg_temp_new();
 
-                /* if cpu_R[rb] != 0 */
-                wb_SR_OV_div(rb);
-                tcg_gen_brcondi_tl(TCG_COND_EQ, cpu_R[rb], 0x0, l8);
-                tcg_gen_div_tl(cpu_R[rd], cpu_R[ra], cpu_R[rb]);
-                tcg_gen_br(l9);
+                    /* if cpu_R[rb] != 0 */
+                    wb_SR_OV_div(rb);
+                    tcg_gen_brcondi_tl(TCG_COND_EQ, cpu_R[rb], 0x0, l8);
+                    tcg_gen_div_tl(cpu_R[rd], cpu_R[ra], cpu_R[rb]);
+                    tcg_gen_br(l9);
 
-                /* else if excp */
-                gen_set_label(l8);
-                check_excp();
-                tcg_gen_brcondi_tl(TCG_COND_NE, env_excp, 1, l9);
-                TCGv t0 = tcg_temp_new();
-                TCGv t1 = tcg_temp_new();
-                tcg_gen_andi_tl(t0, cpu_sr, SR_OVE);
-                tcg_gen_andi_tl(t1, cpu_aecr, AECR_DBZE);
-                tcg_gen_shli_tl(t1, t1, 8);
-                tcg_gen_brcond_tl(TCG_COND_NE, t0, t1, l9);
-                gen_exception(dc, EXCP_RANGE);
-                gen_set_label(l9);
+                    /* else if excp */
+                    gen_set_label(l8);
+                    check_excp();
+                    tcg_gen_brcondi_tl(TCG_COND_NE, env_excp, 1, l9);
+                    tcg_gen_andi_tl(t0, cpu_sr, SR_OVE);
+                    tcg_gen_andi_tl(t1, cpu_aecr, AECR_DBZE);
+                    tcg_gen_shli_tl(t1, t1, 8);
+                    tcg_gen_brcond_tl(TCG_COND_NE, t0, t1, l9);
+                    gen_exception(dc, EXCP_RANGE);
+                    gen_set_label(l9);
+                }
             }
             break;
 
@@ -541,27 +563,35 @@ static void dec_calc(DisasContext *dc, uint32_t insn)
         case 0x03:    /* l.divu */
             LOG_DIS("l.divu r%d, r%d, r%d\n", rd, ra, rb);
             {
-                TCGLabel *l10 = gen_new_label();
-                TCGLabel *l11 = gen_new_label();
+                if (dc->flags & CPUCFGR_NOFLAGS) {
+                    TCGLabel *l7 = gen_new_label();
+                    tcg_gen_brcondi_tl(TCG_COND_EQ, cpu_R[rb], 0x0, l7);
+                    gen_illegal_exception(dc);
+                    gen_set_label(l7);
+                    tcg_gen_div_tl(cpu_R[rd], cpu_R[ra], cpu_R[rb]);
+                } else {
+                    TCGLabel *l10 = gen_new_label();
+                    TCGLabel *l11 = gen_new_label();
 
-                /* if cpu_R[rb] != 0 */
-                wb_SR_OV_div(rb);
-                tcg_gen_brcondi_tl(TCG_COND_EQ, cpu_R[rb], 0x0, l10);
-                tcg_gen_div_tl(cpu_R[rd], cpu_R[ra], cpu_R[rb]);
-                tcg_gen_br(l11);
+                    /* if cpu_R[rb] != 0 */
+                    wb_SR_OV_div(rb);
+                    tcg_gen_brcondi_tl(TCG_COND_EQ, cpu_R[rb], 0x0, l10);
+                    tcg_gen_div_tl(cpu_R[rd], cpu_R[ra], cpu_R[rb]);
+                    tcg_gen_br(l11);
 
-                /* else if excp */
-                gen_set_label(l10);
-                check_excp();
-                tcg_gen_brcondi_tl(TCG_COND_NE, env_excp, 1, l11);
-                TCGv t0 = tcg_temp_new();
-                TCGv t1 = tcg_temp_new();
-                tcg_gen_andi_tl(t0, cpu_sr, SR_OVE);
-                tcg_gen_andi_tl(t1, cpu_aecr, AECR_DBZE);
-                tcg_gen_shli_tl(t1, t1, 8);
-                tcg_gen_brcond_tl(TCG_COND_NE, t0, t1, l11);
-                gen_exception(dc, EXCP_RANGE);
-                gen_set_label(l11);
+                    /* else if excp */
+                    gen_set_label(l10);
+                    check_excp();
+                    tcg_gen_brcondi_tl(TCG_COND_NE, env_excp, 1, l11);
+                    TCGv t0 = tcg_temp_new();
+                    TCGv t1 = tcg_temp_new();
+                    tcg_gen_andi_tl(t0, cpu_sr, SR_OVE);
+                    tcg_gen_andi_tl(t1, cpu_aecr, AECR_DBZE);
+                    tcg_gen_shli_tl(t1, t1, 8);
+                    tcg_gen_brcond_tl(TCG_COND_NE, t0, t1, l11);
+                    gen_exception(dc, EXCP_RANGE);
+                    gen_set_label(l11);
+                }
             }
             break;
 
@@ -578,6 +608,8 @@ static void dec_calc(DisasContext *dc, uint32_t insn)
             {
                 if (ra == 0 || rb == 0) {
                     tcg_gen_movi_tl(cpu_R[rd], 0x0);
+                } else if (dc->flags & CPUCFGR_NOFLAGS) {
+                    tcg_gen_mul_tl(cpu_R[rd], cpu_R[ra], cpu_R[rb]);
                 } else {
                     TCGLabel *l12 = gen_new_label();
                     TCGv h = tcg_temp_new();
@@ -1030,51 +1062,59 @@ static void dec_misc(DisasContext *dc, uint32_t insn)
     case 0x27:    /* l.addi */
         LOG_DIS("l.addi r%d, r%d, %d\n", rd, ra, I16);
         {
-            TCGLabel *l0 = gen_new_label();
-            TCGLabel *l1 = gen_new_label();
+            if (dc->flags & CPUCFGR_NOFLAGS) {
+                tcg_gen_addi_tl(cpu_R[rd],cpu_R[ra], sign_extend(I16, 16));
+            } else {
+                TCGLabel *l0 = gen_new_label();
+                TCGLabel *l1 = gen_new_label();
 
-            /* if !excp */
-            check_excp();
-            tcg_gen_brcondi_tl(TCG_COND_EQ, env_excp, 1, l0);
-            tcg_gen_addi_tl(cpu_R[rd],cpu_R[ra], sign_extend(I16, 16));
-            wb_SR_CY_add(rd, ra, rb);
-            tcg_gen_br(l1);
+                /* if !excp */
+                check_excp();
+                tcg_gen_brcondi_tl(TCG_COND_EQ, env_excp, 1, l0);
+                tcg_gen_addi_tl(cpu_R[rd],cpu_R[ra], sign_extend(I16, 16));
+                wb_SR_CY_add(rd, ra, rb);
+                tcg_gen_br(l1);
 
-            /* else */
-            gen_set_label(l0);
-            TCGv_i32 ti = tcg_const_i32(sign_extend(I16, 16));
-            gen_helper_adder(cpu_R[rd], cpu_env, cpu_R[ra], ti, NO_CIN);
-            gen_set_label(l1);
-            tcg_temp_free_i32(ti);
+                /* else */
+                gen_set_label(l0);
+                TCGv_i32 ti = tcg_const_i32(sign_extend(I16, 16));
+                gen_helper_adder(cpu_R[rd], cpu_env, cpu_R[ra], ti, NO_CIN);
+                gen_set_label(l1);
+                tcg_temp_free_i32(ti);
+            }
         }
         break;
 
     case 0x28:    /* l.addic */
         LOG_DIS("l.addic r%d, r%d, %d\n", rd, ra, I16);
         {
-            TCGLabel *l0 = gen_new_label();
-            TCGLabel *l1 = gen_new_label();
-            TCGv t0 = tcg_temp_new();
+            if (dc->flags & CPUCFGR_NOFLAGS) {
+                gen_illegal_exception(dc);
+            } else {
+                TCGLabel *l0 = gen_new_label();
+                TCGLabel *l1 = gen_new_label();
+                TCGv t0 = tcg_temp_new();
 
-            /* Get carry from sr[cy] */
-            tcg_gen_andi_tl(t0, cpu_sr, SR_CY);
-            tcg_gen_shri_tl(t0, t0, 10);
+                /* Get carry from sr[cy] */
+                tcg_gen_andi_tl(t0, cpu_sr, SR_CY);
+                tcg_gen_shri_tl(t0, t0, 10);
 
-            /* if !excp */
-            check_excp();
-            tcg_gen_brcondi_tl(TCG_COND_EQ, env_excp, 1, l0);
-            tcg_gen_addi_tl(cpu_R[rd],cpu_R[ra], sign_extend(I16, 16));
-            tcg_gen_add_tl(cpu_R[rd],cpu_R[rd], t0);
-            wb_SR_CY_add(rd, ra, rb);
-            tcg_gen_br(l1);
+                /* if !excp */
+                check_excp();
+                tcg_gen_brcondi_tl(TCG_COND_EQ, env_excp, 1, l0);
+                tcg_gen_addi_tl(cpu_R[rd],cpu_R[ra], sign_extend(I16, 16));
+                tcg_gen_add_tl(cpu_R[rd],cpu_R[rd], t0);
+                wb_SR_CY_add(rd, ra, rb);
+                tcg_gen_br(l1);
 
-            /* else */
-            gen_set_label(l0);
-            TCGv_i32 ti = tcg_const_i32(sign_extend(I16, 16));
-            gen_helper_adder(cpu_R[rd], cpu_env, cpu_R[ra], ti, t0);
-            tcg_temp_free_i32(ti);
-            gen_set_label(l1);
-            tcg_temp_free(t0);
+                /* else */
+                gen_set_label(l0);
+                TCGv_i32 ti = tcg_const_i32(sign_extend(I16, 16));
+                gen_helper_adder(cpu_R[rd], cpu_env, cpu_R[ra], ti, t0);
+                tcg_temp_free_i32(ti);
+                gen_set_label(l1);
+                tcg_temp_free(t0);
+            }
         }
         break;
 
@@ -1125,11 +1165,11 @@ static void dec_misc(DisasContext *dc, uint32_t insn)
 #if defined(CONFIG_USER_ONLY)
             return;
 #else
-            TCGv_i32 ti = tcg_const_i32(I16);
             if (dc->mem_idx == MMU_USER_IDX) {
                 gen_illegal_exception(dc);
                 return;
             }
+            TCGv_i32 ti = tcg_const_i32(I16);
             gen_helper_mfspr(cpu_R[rd], cpu_env, cpu_R[rd], cpu_R[ra], ti);
             tcg_temp_free_i32(ti);
 #endif

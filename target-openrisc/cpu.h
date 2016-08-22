@@ -118,6 +118,7 @@ enum {
     CPUCFGR_EVBARP = (1 << 12),
     CPUCFGR_ISRP = (1 << 13),
     CPUCFGR_AECSRP = (1 << 14),
+    CPUCFGR_NOFLAGS = (1 << 31), /* Custom flag for QEMU, not in the spec */
 };
 
 /* DMMU configure register */
@@ -218,17 +219,6 @@ enum {
     SR_FO  = (1 << 15),
     SR_SUMRA = (1 << 16),
     SR_SCE = (1 << 17),
-};
-
-/* OpenRISC Hardware Capabilities */
-enum {
-    OPENRISC_FEATURE_NSGF = (15 << 0),
-    OPENRISC_FEATURE_CGF = (1 << 4),
-    OPENRISC_FEATURE_OB32S = (1 << 5),
-    OPENRISC_FEATURE_OB64S = (1 << 6),
-    OPENRISC_FEATURE_OF32S = (1 << 7),
-    OPENRISC_FEATURE_OF64S = (1 << 8),
-    OPENRISC_FEATURE_OV64S = (1 << 9),
 };
 
 /* Tick Timer Mode Register */
