@@ -54,7 +54,7 @@ static void openrisc_cpu_reset(CPUState *s)
     /*tb_flush(&cpu->env);    FIXME: Do we need it?  */
 
     cpu->env.pc = 0x100;
-    cpu->env.sr = SR_FO | SR_SM;
+    cpu->env.sr = SR_SUMRA | SR_FO | SR_SM;
     s->exception_index = -1;
 
     cpu->env.upr = UPR_UP | UPR_DMP | UPR_IMP | UPR_PICP | UPR_TTP;
