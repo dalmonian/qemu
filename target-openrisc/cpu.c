@@ -58,7 +58,7 @@ static void openrisc_cpu_reset(CPUState *s)
     s->exception_index = -1;
 
     cpu->env.upr = UPR_UP | UPR_DMP | UPR_IMP | UPR_PICP | UPR_TTP;
-    cpu->env.cpucfgr = CPUCFGR_AECSRP | CPUCFGR_OB32S | CPUCFGR_OF32S;
+    cpu->env.cpucfgr = CPUCFGR_OB32S | CPUCFGR_OF32S;
     cpu->env.dmmucfgr = (DMMUCFGR_NTW & (0 << 2)) | (DMMUCFGR_NTS & (6 << 2));
     cpu->env.immucfgr = (IMMUCFGR_NTW & (0 << 2)) | (IMMUCFGR_NTS & (6 << 2));
 
@@ -128,6 +128,15 @@ static ObjectClass *openrisc_cpu_class_by_name(const char *cpu_model)
     return oc;
 }
 
+static void or1200_excp_initfn(Object *obj)
+{
+    OpenRISCCPU *cpu = OPENRISC_CPU(obj);
+
+    set_feature(cpu, CPUCFGR_OB32S);
+    set_feature(cpu, CPUCFGR_OF32S);
+    set_feature(cpu, CPUCFGR_AECSRP);
+}
+
 static void or1200_initfn(Object *obj)
 {
     OpenRISCCPU *cpu = OPENRISC_CPU(obj);
@@ -161,6 +170,7 @@ typedef struct OpenRISCCPUInfo {
 static const OpenRISCCPUInfo openrisc_cpus[] = {
     { .name = "or1200",         .initfn = or1200_initfn },
     { .name = "or1200-noflags", .initfn = or1200_noflags_initfn },
+    { .name = "or1200-excp", .initfn = or1200_excp_initfn },
     { .name = "any",            .initfn = openrisc_any_initfn },
 };
 
