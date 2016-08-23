@@ -142,12 +142,12 @@ static inline void wb_SR_OV_div(int rb)
     gen_set_label(label);
 }
 
-static inline void wb_SR_CY_add(int rd, int ra, int rb)
+static inline void wb_SR_CY_add(TCGv rd, TCGv ra, TCGv rb)
 {
     TCGLabel *label = gen_new_label();
     tcg_gen_andi_tl(cpu_sr, cpu_sr, ~SR_CY);
-    tcg_gen_brcond_tl(TCG_COND_GEU, cpu_R[rd], cpu_R[ra], label);
-    tcg_gen_brcond_tl(TCG_COND_GEU, cpu_R[rd], cpu_R[rb], label);
+    tcg_gen_brcond_tl(TCG_COND_GEU, rd, ra, label);
+    tcg_gen_brcond_tl(TCG_COND_GEU, rd, rb, label);
     tcg_gen_ori_tl(cpu_sr, cpu_sr, SR_CY);
     gen_set_label(label);
 }
@@ -345,7 +345,7 @@ static void dec_calc(DisasContext *dc, uint32_t insn)
                     check_excp();
                     tcg_gen_brcondi_tl(TCG_COND_EQ, env_excp, 1, l0);
                     tcg_gen_add_tl(cpu_R[rd],cpu_R[ra],cpu_R[rb]);
-                    wb_SR_CY_add(rd, ra, rb);
+                    wb_SR_CY_add(cpu_R[rd], cpu_R[ra], cpu_R[rb]);
                     tcg_gen_br(l1);
 
                     /* else */
@@ -355,7 +355,7 @@ static void dec_calc(DisasContext *dc, uint32_t insn)
                     gen_set_label(l1);
                 } else {
                     tcg_gen_add_tl(cpu_R[rd], cpu_R[ra], cpu_R[rb]);
-                    wb_SR_CY_add(rd, ra, rb);
+                    wb_SR_CY_add(cpu_R[rd], cpu_R[ra], cpu_R[rb]);
                 }
             }
             break;
@@ -387,7 +387,7 @@ static void dec_calc(DisasContext *dc, uint32_t insn)
                     tcg_gen_brcondi_tl(TCG_COND_EQ, env_excp, 1, l0);
                     tcg_gen_add_tl(cpu_R[rd],cpu_R[ra],cpu_R[rb]);
                     tcg_gen_add_tl(cpu_R[rd],cpu_R[rd], t0);
-                    wb_SR_CY_add(rd, ra, rb);
+                    wb_SR_CY_add(cpu_R[rd], cpu_R[ra], cpu_R[rb]);
                     tcg_gen_br(l1);
 
                     /* else */
@@ -395,12 +395,12 @@ static void dec_calc(DisasContext *dc, uint32_t insn)
                     gen_helper_adder(cpu_R[rd], cpu_env, cpu_R[ra], cpu_R[rb],
                                      t0);
                     gen_set_label(l1);
-                    tcg_temp_free(t0);
                 } else {
                     tcg_gen_add_tl(cpu_R[rd],cpu_R[ra],cpu_R[rb]);
                     tcg_gen_add_tl(cpu_R[rd],cpu_R[rd], t0);
-                    wb_SR_CY_add(rd, ra, rb);
+                    wb_SR_CY_add(cpu_R[rd], cpu_R[ra], cpu_R[rb]);
                 }
+                tcg_temp_free(t0);
             }
             break;
         default:
@@ -1081,7 +1081,7 @@ static void dec_misc(DisasContext *dc, uint32_t insn)
                 check_excp();
                 tcg_gen_brcondi_tl(TCG_COND_EQ, env_excp, 1, l0);
                 tcg_gen_addi_tl(cpu_R[rd],cpu_R[ra], sign_extend(I16, 16));
-                wb_SR_CY_add(rd, ra, rb);
+                wb_SR_CY_add(cpu_R[rd], cpu_R[ra], cpu_R[rb]);
                 tcg_gen_br(l1);
 
                 /* else */
@@ -1092,7 +1092,7 @@ static void dec_misc(DisasContext *dc, uint32_t insn)
                 tcg_temp_free_i32(ti);
             } else {
                 tcg_gen_addi_tl(cpu_R[rd],cpu_R[ra], sign_extend(I16, 16));
-                wb_SR_CY_add(rd, ra, rb);
+                wb_SR_CY_add(cpu_R[rd], cpu_R[ra], cpu_R[rb]);
             }
         }
         break;
@@ -1116,7 +1116,7 @@ static void dec_misc(DisasContext *dc, uint32_t insn)
                 tcg_gen_brcondi_tl(TCG_COND_EQ, env_excp, 1, l0);
                 tcg_gen_addi_tl(cpu_R[rd],cpu_R[ra], sign_extend(I16, 16));
                 tcg_gen_add_tl(cpu_R[rd],cpu_R[rd], t0);
-                wb_SR_CY_add(rd, ra, rb);
+                wb_SR_CY_add(cpu_R[rd], cpu_R[ra], cpu_R[rb]);
                 tcg_gen_br(l1);
 
                 /* else */
@@ -1128,7 +1128,7 @@ static void dec_misc(DisasContext *dc, uint32_t insn)
             } else {
                 tcg_gen_addi_tl(cpu_R[rd],cpu_R[ra], sign_extend(I16, 16));
                 tcg_gen_add_tl(cpu_R[rd],cpu_R[rd], t0);
-                wb_SR_CY_add(rd, ra, rb);
+                wb_SR_CY_add(cpu_R[rd], cpu_R[ra], cpu_R[rb]);
             }
 
             tcg_temp_free(t0);
